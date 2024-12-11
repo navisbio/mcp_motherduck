@@ -126,17 +126,17 @@ async def test_describe_table(tool_manager, mock_db):
     Test describing a table using the describe-table tool
     """
     table_name = "test_table"
-    # Mock the results returned by the database
+    # Mock the results returned by the database with the new information_schema format
     mock_results = [
-        (0, 'id', 'INTEGER', 0, None, 0),
-        (1, 'name', 'TEXT', 0, None, 0),
+        ('id', 'INTEGER', 'NOT NULL'),
+        ('name', 'TEXT', 'NULLABLE'),
     ]
-    mock_columns = ['cid', 'name', 'type', 'notnull', 'dflt_value', 'pk']
+    mock_columns = ['column_name', 'data_type', 'nullable']
     mock_db.execute_query.return_value = (mock_results, mock_columns)
 
     arguments = {"table_name": table_name}
     response = await tool_manager.execute_tool("describe-table", arguments)
-    expected_output = "id | INTEGER | NULLABLE\nname | TEXT | NULLABLE"
+    expected_output = "id | INTEGER | NOT NULL\nname | TEXT | NULLABLE"
     assert len(response) == 1
     assert isinstance(response[0], TextContent)
     assert response[0].text == expected_output
@@ -144,9 +144,8 @@ async def test_describe_table(tool_manager, mock_db):
     # Test when table does not exist
     mock_db.execute_query.return_value = ([], mock_columns)
     response = await tool_manager.execute_tool("describe-table", arguments)
-    expected_output = "Table 'test_table' does not exist."
+    expected_output = f"Table '{mock_db.database}.{table_name}' does not exist."
     assert response[0].text == expected_output
-
 # Test append-analysis tool
 @pytest.mark.asyncio
 async def test_append_analysis(tool_manager, mock_memo_manager):

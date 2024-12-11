@@ -75,13 +75,14 @@ class ToolManager:
                 logger.error("Missing required arguments for tool execution")
                 raise ValueError("Missing required arguments")
 
-            if name == "list-tables":
+            elif name == "list-tables":
                 logger.debug("Executing list-tables query")
-                results, columns = self.db.execute_query("""
-                    SELECT name
-                    FROM sqlite_master
-                    WHERE type = 'table'
-                    ORDER BY name;
+                results, columns = self.db.execute_query(f"""
+                    SELECT table_name
+                    FROM information_schema.tables
+                    WHERE table_catalog = '{self.db.database}'
+                    AND table_schema = 'main'
+                    ORDER BY table_name;
                 """)
                 table_names = [row[0] for row in results]
                 logger.info(f"Retrieved {len(table_names)} tables from database {self.db.database}")
@@ -93,15 +94,31 @@ class ToolManager:
                     raise ValueError("Missing table_name argument")
 
                 table_name = arguments["table_name"]
-                logger.debug(f"Describing table: {table_name}")
-                results, columns = self.db.execute_query(f"PRAGMA table_info('{table_name}');")
+                fully_qualified_table = f"{self.db.database}.{table_name}"
+                logger.debug(f"Describing table: {fully_qualified_table}")
+                
+                # Using DuckDB's information_schema to get column information
+                results, columns = self.db.execute_query(f"""
+                    SELECT 
+                        column_name,
+                        data_type,
+                        CASE is_nullable 
+                            WHEN 'YES' THEN 'NULLABLE'
+                            ELSE 'NOT NULL'
+                        END as nullable
+                    FROM information_schema.columns 
+                    WHERE table_catalog = '{self.db.database}'
+                    AND table_name = '{table_name}'
+                    ORDER BY ordinal_position;
+                """)
+                
                 if not results:
-                    logger.warning(f"Table {table_name} does not exist in database {self.db.database}")
-                    return [types.TextContent(type="text", text=f"Table '{table_name}' does not exist.")]
-                columns_info = "\n".join(f"{row[1]} | {row[2]} | {'NOT NULL' if row[3] else 'NULLABLE'}" for row in results)
-                logger.info(f"Retrieved schema for table {table_name}")
+                    logger.warning(f"Table {fully_qualified_table} does not exist")
+                    return [types.TextContent(type="text", text=f"Table '{fully_qualified_table}' does not exist.")]
+                    
+                columns_info = "\n".join(f"{row[0]} | {row[1]} | {row[2]}" for row in results)
+                logger.info(f"Retrieved schema for table {fully_qualified_table}")
                 return [types.TextContent(type="text", text=columns_info)]
-
             elif name == "read-query":
                 query = arguments.get("query", "").strip()
                 # Validate the query
@@ -115,8 +132,11 @@ class ToolManager:
                     logger.error("Query contains disallowed statements.")
                     raise ValueError("Only SELECT statements are allowed.")
 
-                logger.debug(f"Executing query: {query}")
-                results, columns = self.db.execute_query(query)
+                # Modify query to use fully qualified table names
+                modified_query = f"USE {self.db.database}; {query}"
+                logger.debug(f"Executing query: {modified_query}")
+                results, columns = self.db.execute_query(modified_query)                
+                
                 if not results:
                     logger.info("Query returned no results.")
                     return [types.TextContent(type="text", text="No results found.")]
@@ -125,7 +145,9 @@ class ToolManager:
                     rows = [dict(zip(columns, row)) for row in results]
                     formatted_results = json.dumps(rows, indent=2)
                     logger.info(f"Query returned {len(rows)} rows")
-                    return [types.TextContent(type="text", text=formatted_results)]            
+                    return [types.TextContent(type="text", text=formatted_results)]       
+                
+                     
             elif name == "append-analysis":
                 if "finding" not in arguments:
                     logger.error("Missing finding argument for append-analysis")

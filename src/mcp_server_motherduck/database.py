@@ -4,17 +4,26 @@ import duckdb
 from contextlib import closing
 from typing import Any
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
+
 logger = logging.getLogger('mcp_motherduck_server.database')
 
 class MotherDuckDatabase:
     def __init__(self):
         logger.info("Initializing MotherDuck database connection")
         self.token = os.environ.get("MOTHERDUCK_TOKEN")
-        self.database = os.environ.get('MOTHERDUCK_DATABASE', ':memory:')  # Default to in-memory database if not set
+        self.database = os.environ.get('MOTHERDUCK_DATABASE')
 
         if not self.token:
             logger.error("Missing MotherDuck token")
             raise ValueError("MOTHERDUCK_TOKEN environment variable must be set")
+
+        if not self.database:
+            logger.error("Missing MotherDuck database name")
+            raise ValueError("MOTHERDUCK_DATABASE environment variable must be set")
 
         # Construct the connection string with the database name
         self.connection_string = f"md:{self.database}?motherduck_token={self.token}"
