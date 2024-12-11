@@ -9,7 +9,7 @@ Database Tools:
 - "read-query": Execute SQL queries on the connected database
 - "list-tables": View available database tables
 - "describe-table": Get table schema details
-- "append-insight": Add findings to analysis memos
+- "append-analysis": Add findings to analysis memos
 
 Analysis Memos:
 - memo://analysis: Key findings, patterns, qualitative insights, and references

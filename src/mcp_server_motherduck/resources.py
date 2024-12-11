@@ -10,9 +10,9 @@ class ResourceDefinition(TypedDict):
 
 MOTHERDUCK_RESOURCES: list[ResourceDefinition] = [
     {
-        "uri": "memo://landscape",
-        "name": "Clinical Trial Landscape",
-        "description": "Key findings about trial patterns, sponsor activity, and development trends",
+        "uri": "memo://analysis",
+        "name": "Analysis Memo",
+        "description": "Key findings and insights from the analysis",
         "mimeType": "text/plain",
     },
     {

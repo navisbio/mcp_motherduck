@@ -4,36 +4,34 @@ logger = logging.getLogger('mcp_motherduck_server.memo_manager')
 
 class MemoManager:
     def __init__(self):
-        self.insights: list[str] = []
-        self.landscape_findings: list[str] = []
+        self.findings: list[str] = []
         logger.info("MemoManager initialized")
 
-    def add_landscape_finding(self, finding: str) -> None:
-        """Add a new trial landscape finding to the in-memory collection"""
+    def add_finding(self, finding: str) -> None:
+        """Add a new analysis finding to the in-memory collection"""
         if not finding:
-            logger.error("Attempted to add empty landscape finding")
-            raise ValueError("Empty landscape finding")
+            logger.error("Attempted to add empty analysis finding")
+            raise ValueError("Empty analysis finding")
         
-        self.landscape_findings.append(finding)
-        logger.debug(f"Added new landscape finding. Total findings: {len(self.landscape_findings)}")
+        self.findings.append(finding)
+        logger.debug(f"Added new analysis finding. Total findings: {len(self.findings)}")
 
-    def get_landscape_memo(self) -> str:
-        """Generate a formatted memo from collected trial landscape findings"""
-        logger.debug(f"Generating landscape memo with {len(self.landscape_findings)} findings")
-        if not self.landscape_findings:
-            logger.info("No landscape findings available")
-            return "No landscape analysis available yet."
+    def get_analysis_memo(self) -> str:
+        """Generate a formatted memo from collected analysis findings"""
+        logger.debug(f"Generating analysis memo with {len(self.findings)} findings")
+        if not self.findings:
+            logger.info("No analysis findings available")
+            return "No analysis memo available yet."
 
-        findings = "\n".join(f"- {finding}" for finding in self.landscape_findings)
-        logger.debug("Generated landscape memo")
+        findings = "\n".join(f"- {finding}" for finding in self.findings)
+        logger.debug("Generated analysis memo")
         
-        memo = "🔍 Clinical Trial Landscape Analysis\n\n"
-        memo += "Key Development Patterns & Trends:\n\n"
+        memo = "🔍 Analysis Memo\n\n"
+        memo += "Key Findings and Insights:\n\n"
         memo += findings
 
-        if len(self.landscape_findings) > 1:
+        if len(self.findings) > 1:
             memo += "\n\nSummary:\n"
-            memo += f"Analysis has identified {len(self.landscape_findings)} key patterns in trial development."
+            memo += f"The analysis has identified {len(self.findings)} key findings."
 
         return memo
-
