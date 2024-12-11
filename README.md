@@ -1,98 +1,66 @@
-# AACT Clinical Trials MCP Server
+# MotherDuck MCP Server
 
 ## Overview
-A Model Context Protocol (MCP) server implementation that provides access to the AACT (Aggregate Analysis of ClinicalTrials.gov) database. This server enables analysis of clinical trial data, tracking development trends, and automatically generating analysis memos that capture insights about therapeutic landscapes.
+A Model Context Protocol (MCP) server implementation that provides access to MotherDuck databases. This server enables data analysis and automatically generates analysis memos that capture insights from your data.
 
 ## Components
 
 ### Resources
-The server exposes a dynamic resources to store analysis results:
-- `memo://landscape`: Key findings about trial patterns, sponsor activity, and development trends
-
-
-### Prompts
-The server provides an analytical prompt:
-- `indication-landscape`: Interactive prompt that analyzes clinical trial patterns
-  - Required argument: `topic` - The therapeutic area or topic to analyze (e.g., "multiple sclerosis", "biomarkers used in breast cancer", ...)
-  - Analyzes trial patterns and development trends
-  - Examines competitive dynamics
-  - Integrates findings with the landscape and metrics memos
+The server exposes a dynamic resource to store analysis results:
+- `memo://analysis`: Key findings and insights from data analysis
 
 ### Tools
 The server offers several core tools:
 
 #### Query Tools
 - `read-query`
-   - Execute SELECT queries on the AACT database
+   - Execute SELECT queries on the MotherDuck database
    - Input: 
      - `query` (string): The SELECT SQL query to execute
-   - Returns: Query results as array of objects
+   - Returns: Query results as JSON array of objects
 
 #### Schema Tools
 - `list-tables`
-   - Get a list of all tables in the AACT database
+   - Get a list of all tables in the MotherDuck database
    - No input required
-   - Returns: Array of table names
+   - Returns: List of table names
 
 - `describe-table`
    - View schema information for a specific table
    - Input:
      - `table_name` (string): Name of table to describe
-   - Returns: Array of column definitions with names and types
+   - Returns: Column definitions with names, types, and nullability
 
 #### Analysis Tools
-- `append-insight`
-   - Add new business insights to the insights memo
+- `append-analysis`
+   - Add new findings to the analysis memo
    - Input:
-     - `insight` (string): Business insight discovered from data analysis
-   - Returns: Confirmation of insight addition
-
-- `append-landscape`
-   - Add findings about trial patterns and development trends
-   - Input:
-     - `finding` (string): Analysis finding about trial patterns or trends
+     - `finding` (string): Analysis finding about patterns or trends
    - Returns: Confirmation of finding addition
-
-- `append-metrics`
-   - Add quantitative metrics about trials
-   - Input:
-     - `metric` (string): Quantitative metric or statistical finding
-   - Returns: Confirmation of metric addition
-
-## Create an Account to Access the Database
-
-AACT requires a free account to access the database. You can sign up at:
-
-https://aact.ctti-clinicaltrials.org/users/sign_up
-
 
 ## Environment Variables
 The server requires the following environment variables:
-- `DB_USER`: AACT database username
-- `DB_PASSWORD`: AACT database password
+- `MOTHERDUCK_TOKEN`: Your MotherDuck authentication token
+- `MOTHERDUCK_DATABASE`: Name of the MotherDuck database to connect to
 
 ## Usage with Claude Desktop
 
-Note that you need Claude Desktop and a Claude subscription at the moment. 
+Add the following to your claude_desktop_config.json:
 
-Add the following lines to the file claude_desktop_config.json. (On macOS, the file is located at /Users/YOUR_USERNAME/Library/Application Support/Claude/claude_desktop_config.json and you will need to create it yourself if it does not exist yet).
 
-```json
 "mcpServers": {
-    "CTGOV-MCP": {
-      "command": "uvx",
+    "MOTHERDUCK-MCP": {
+      "command": "python",
       "args": [
-        "server_clinicaltrials_aact"
+        "-m",
+        "mcp_server_motherduck"
       ],
       "env": {
-        "DB_USER": USERNAME,
-        "DB_PASSWORD": PASSWORD
+        "MOTHERDUCK_TOKEN": "YOUR_TOKEN",
+        "MOTHERDUCK_DATABASE": "YOUR_DATABASE"
       }
     }
 }
-```
-
-Note: Replace `YOUR_AACT_USERNAME` and `YOUR_AACT_PASSWORD` with your actual AACT credentials.
 
 
 ## Roadmap & Contribution
@@ -123,4 +91,3 @@ Your feedback helps shape our development priorities and align them with the res
 ## License
 
 This MCP server is licensed under the GNU General Public License v3.0 (GPL-3.0). This means you have the freedom to run, study, share, and modify the software. Any modifications or derivative works must also be distributed under the same GPL-3.0 terms. For more details, please see the LICENSE file in the project repository.
-
