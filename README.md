@@ -124,11 +124,3 @@ Your feedback helps shape our development priorities and align them with the res
 
 This MCP server is licensed under the GNU General Public License v3.0 (GPL-3.0). This means you have the freedom to run, study, share, and modify the software. Any modifications or derivative works must also be distributed under the same GPL-3.0 terms. For more details, please see the LICENSE file in the project repository.
 
-## Acknowledgements
-
-This project was inspired by and initially based on code from:
-- [SQLite MCP Server](https://github.com/modelcontextprotocol/servers/tree/main/src/sqlite)
-- [DuckDB MCP Server](https://github.com/ktanaka101/mcp-server-duckdb/tree/main)
-- [OpenDataMCP](https://github.com/OpenDataMCP/OpenDataMCP)
-
-Thanks to these awesome projects for showing us the way! 🙌

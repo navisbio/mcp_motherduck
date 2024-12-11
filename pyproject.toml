@@ -1,7 +1,7 @@
 [project]
-name = "mcp-server-aact"
+name = "mcp-server-motherduck"
 version = "0.1.3"
-description = "MCP server for AACT clinical trials database"
+description = "MCP server for Motherduck"
 requires-python = ">=3.10"
 dependencies = [
     "mcp",
@@ -32,4 +32,4 @@ dev-dependencies = [
 ]
 
 [project.scripts]
-mcp-server-aact = "mcp_server_aact:main"
+mcp-server-motherduck = "mcp_server_motherduck:main"
