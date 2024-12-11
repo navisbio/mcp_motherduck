@@ -5,7 +5,7 @@ description = "MCP server for Motherduck"
 requires-python = ">=3.10"
 dependencies = [
     "mcp",
-    "psycopg2-binary",
+    "duckdb",
     "python-dotenv"
 ]
 

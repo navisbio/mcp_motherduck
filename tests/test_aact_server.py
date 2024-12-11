@@ -1,15 +1,15 @@
 import pytest
 from unittest.mock import Mock, AsyncMock
-from mcp_server_aact.database import MotherDuckDatabase
-from mcp_server_aact.handlers import MCPHandlers
-from mcp_server_aact.memo_manager import MemoManager
-from mcp_server_aact.tools import ToolManager
+from mcp_server_motherduck.database import AACTDatabase
+from mcp_server_motherduck.handlers import MCPHandlers
+from mcp_server_motherduck.memo_manager import MemoManager
+from mcp_server_motherduck.tools import ToolManager
 from mcp.types import Resource, Tool, Prompt, GetPromptResult, PromptMessage, TextContent
 from pydantic import AnyUrl
 
 @pytest.fixture
 def mock_db():
-    mock = Mock(spec=MotherDuckDatabase)
+    mock = Mock(spec=AACTDatabase)
     # Set up mock responses
     mock.execute_query.return_value = [
         {"table_name": "studies"},

@@ -8,7 +8,7 @@ class ResourceDefinition(TypedDict):
     description: str
     mimeType: str
 
-AACT_RESOURCES: list[ResourceDefinition] = [
+MOTHERDUCK_RESOURCES: list[ResourceDefinition] = [
     {
         "uri": "memo://landscape",
         "name": "Clinical Trial Landscape",
@@ -17,8 +17,8 @@ AACT_RESOURCES: list[ResourceDefinition] = [
     },
     {
         "uri": "schema://database",
-        "name": "AACT Database Schema",
-        "description": "Complete schema information for all tables in the AACT database",
+        "name": "MotherDuck Database Schema",
+        "description": "Complete schema information for all tables in the MotherDuck database",
         "mimeType": "application/json",
     }
 ]
@@ -31,5 +31,5 @@ def get_resources() -> list[types.Resource]:
             description=resource["description"],
             mimeType=resource["mimeType"],
         )
-        for resource in AACT_RESOURCES
-    ] 
+        for resource in MOTHERDUCK_RESOURCES
+    ]

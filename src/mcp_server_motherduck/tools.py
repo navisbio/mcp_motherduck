@@ -18,7 +18,7 @@ class ToolManager:
         tools = [
             types.Tool(
                 name="read-query",
-                description="Execute a SELECT query on the AACT clinical trials database",
+                description="Execute a SELECT query on the MotherDuck database",
                 inputSchema={
                     "type": "object",
                     "properties": {
@@ -29,7 +29,7 @@ class ToolManager:
             ),
             types.Tool(
                 name="list-tables",
-                description="List all tables in the AACT database",
+                description="List all tables in the MotherDuck database",
                 inputSchema={
                     "type": "object",
                     "properties": {},
@@ -37,7 +37,7 @@ class ToolManager:
             ),
             types.Tool(
                 name="describe-table",
-                description="Get the schema information for a specific table in AACT",
+                description="Get the schema information for a specific table in MotherDuck",
                 inputSchema={
                     "type": "object",
                     "properties": {
@@ -77,29 +77,26 @@ class ToolManager:
             if name == "list-tables":
                 logger.debug("Executing list-tables query")
                 results = self.db.execute_query("""
-                    SELECT table_name 
-                    FROM information_schema.tables 
-                    WHERE table_schema = 'ctgov'
-                    ORDER BY table_name;
+                    SELECT name 
+                    FROM sqlite_master 
+                    WHERE type='table' 
+                    ORDER BY name;
                 """)
-                logger.info(f"Retrieved {len(results)} tables")
-                return [types.TextContent(type="text", text=str(results))]
+                table_names = [row[0] for row in results]
+                logger.info(f"Retrieved {len(table_names)} tables")
+                return [types.TextContent(type="text", text="\n".join(table_names))]
 
             elif name == "describe-table":
                 if "table_name" not in arguments:
                     logger.error("Missing table_name argument for describe-table")
                     raise ValueError("Missing table_name argument")
                 
-                logger.debug(f"Describing table: {arguments['table_name']}")
-                results = self.db.execute_query("""
-                    SELECT column_name, data_type, character_maximum_length
-                    FROM information_schema.columns
-                    WHERE table_schema = 'ctgov' 
-                    AND table_name = %s
-                    ORDER BY ordinal_position;
-                """, {"table_name": arguments["table_name"]})
-                logger.info(f"Retrieved {len(results)} columns for table {arguments['table_name']}")
-                return [types.TextContent(type="text", text=str(results))]
+                table_name = arguments["table_name"]
+                logger.debug(f"Describing table: {table_name}")
+                results = self.db.execute_query(f"PRAGMA table_info('{table_name}');")
+                columns_info = "\n".join(str(row) for row in results)
+                logger.info(f"Retrieved schema for table {table_name}")
+                return [types.TextContent(type="text", text=columns_info)]
 
             elif name == "read-query":
                 query = arguments.get("query", "").strip()
@@ -109,8 +106,9 @@ class ToolManager:
                 
                 logger.debug(f"Executing query: {query}")
                 results = self.db.execute_query(query)
-                logger.info(f"Query returned {len(results)} rows")
-                return [types.TextContent(type="text", text=str(results))]
+                rows = [str(row) for row in results]
+                logger.info(f"Query returned {len(rows)} rows")
+                return [types.TextContent(type="text", text="\n".join(rows))]
 
             elif name == "append-landscape":
                 if "finding" not in arguments:
@@ -122,8 +120,6 @@ class ToolManager:
                 logger.info("Landscape finding added successfully")
                 return [types.TextContent(type="text", text="Landscape finding added")]
 
-
         except Exception as e:
             logger.error(f"Error executing tool {name}: {str(e)}", exc_info=True)
             raise
- 
