@@ -17,13 +17,13 @@ class MotherDuckDatabase:
         self.token = os.environ.get("MOTHERDUCK_TOKEN")
         self.database = os.environ.get('MOTHERDUCK_DATABASE')
 
-        if not self.token:
-            logger.error("Missing MotherDuck token")
-            raise ValueError("MOTHERDUCK_TOKEN environment variable must be set")
+        # if not self.token:
+        #     logger.error("Missing MotherDuck token")
+        #     raise ValueError("MOTHERDUCK_TOKEN environment variable must be set")
 
-        if not self.database:
-            logger.error("Missing MotherDuck database name")
-            raise ValueError("MOTHERDUCK_DATABASE environment variable must be set")
+        # if not self.database:
+        #     logger.error("Missing MotherDuck database name")
+        #     raise ValueError("MOTHERDUCK_DATABASE environment variable must be set")
 
         # Construct the connection string with the database name
         self.connection_string = f"md:{self.database}?motherduck_token={self.token}"

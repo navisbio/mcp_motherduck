@@ -69,15 +69,18 @@ class MCPLogHandler(logging.Handler):
 
     def emit(self, record):
         try:
-            if hasattr(self.server, 'request_context') and self.server.request_context:
+            # Only emit logs when we have an active session
+            if (hasattr(self.server, 'request_context') and 
+                self.server.request_context and 
+                hasattr(self.server.request_context, 'session')):
                 msg = self.format(record)
                 self.server.request_context.session.send_log_message(
                     level=record.levelname.lower(),
                     data=msg
                 )
         except Exception:
-            self.handleError(record)
-
+            # Silently ignore logging errors
+            pass
 async def main():
     try:
         server = MotherDuckServer()
