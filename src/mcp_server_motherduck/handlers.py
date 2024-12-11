@@ -2,16 +2,16 @@ import logging
 from typing import Any
 import mcp.types as types
 from pydantic import AnyUrl
-from .database import AACTDatabase
+from .database import MotherDuckDatabase
 from .memo_manager import MemoManager
 from .tools import ToolManager
 import json
 from .resources import get_resources
 
-logger = logging.getLogger('mcp_aact_server.handlers')
+logger = logging.getLogger('mcp_motherduck_server.handlers')
 
 class MCPHandlers:
-    def __init__(self, db: AACTDatabase, schema: dict):
+    def __init__(self, db: MotherDuckDatabase, schema: dict):
         self.db = db
         self.schema = schema
         self.memo_manager = MemoManager()

@@ -1,13 +1,13 @@
 import logging
 from typing import Any
 import mcp.types as types
-from .database import AACTDatabase
+from .database import MotherDuckDatabase
 from .memo_manager import MemoManager
 
-logger = logging.getLogger('mcp_aact_server.tools')
+logger = logging.getLogger('mcp_motherduck_server.tools')
 
 class ToolManager:
-    def __init__(self, db: AACTDatabase, memo_manager: MemoManager):
+    def __init__(self, db: MotherDuckDatabase, memo_manager: MemoManager):
         self.db = db
         self.memo_manager = memo_manager
         logger.info("ToolManager initialized")
