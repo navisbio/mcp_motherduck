@@ -9,3 +9,7 @@ def main():
     asyncio.run(server.main())
 
 __all__ = ["main", "server"]
+
+ssh-keygen -t ed25519 -C "j-walheim" -f ~/.ssh/id_ed25519_j-walheim_github
+
+ssh-add ~/.ssh/id_ed25519_j-walheim_github

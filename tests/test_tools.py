@@ -4,9 +4,9 @@ from dotenv import load_dotenv
 import os
 from unittest.mock import Mock
 from mcp.types import Tool, TextContent
-from mcp_server_motherduck.tools import ToolManager
-from mcp_server_motherduck.database import MotherDuckDatabase
-from mcp_server_motherduck.memo_manager import MemoManager
+from mcp_server_mcp_bigquery_biomedical.tools import ToolManager
+from mcp_server_mcp_bigquery_biomedical.database import MotherDuckDatabase
+from mcp_server_mcp_bigquery_biomedical.memo_manager import MemoManager
 
 @pytest.fixture
 def mock_db():
