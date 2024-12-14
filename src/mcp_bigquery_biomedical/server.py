@@ -2,7 +2,7 @@ import logging
 from mcp.server import Server, NotificationOptions, RequestContext
 from mcp.server.models import InitializationOptions
 import mcp.server.stdio
-from .database import AACTDatabase
+from .database import BigQueryDatabase
 from .handlers import MCPHandlers
 from mcp.types import LoggingLevel, EmptyResult
 import json
@@ -14,7 +14,7 @@ logger.setLevel(logging.DEBUG)
 class AACTServer(Server):
     def __init__(self):
         super().__init__("aact-manager")
-        self.db = AACTDatabase()
+        self.db = BigQueryDatabase()
         
         # Load the schema resource
         schema_path = Path(__file__).parent / "resources" / "database_schema.json"
