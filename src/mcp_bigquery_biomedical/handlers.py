@@ -15,7 +15,8 @@ class MCPHandlers:
         self.db = db
         self.schema = schema
         self.memo_manager = MemoManager()
-        self.tool_manager = ToolManager(db, self.memo_manager)
+        self.tool_manager = ToolManager(self.memo_manager)
+#        self.tool_manager = ToolManager(db, self.memo_manager)
         logger.info("MCPHandlers initialized")
 
     async def handle_list_resources(self) -> list[types.Resource]:
