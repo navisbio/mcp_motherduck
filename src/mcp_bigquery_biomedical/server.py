@@ -8,7 +8,7 @@ from mcp.types import LoggingLevel, EmptyResult
 import json
 from pathlib import Path
 
-logger = logging.getLogger('mcp_aact_server')
+logger = logging.getLogger('mcp_bigquery_server')
 logger.setLevel(logging.DEBUG)
 
 class AACTServer(Server):
@@ -58,7 +58,7 @@ class AACTServer(Server):
         async def handle_set_logging_level(level: LoggingLevel) -> EmptyResult:
             """Handle requests to change the logging level"""
             logger.info(f"Setting logging level to {level}")
-            logging.getLogger('mcp_aact_server').setLevel(level.upper())
+            logging.getLogger('mcp_bigquery_server').setLevel(level.upper())
             
             # Send confirmation through the session
             if hasattr(self, 'request_context') and self.request_context:

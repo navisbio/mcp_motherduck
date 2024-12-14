@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 import json
 import datetime
 
-logger = logging.getLogger('mcp_aact_server.database')
+logger = logging.getLogger('mcp_bigquery_server.database')
 
 class DateEncoder(json.JSONEncoder):
     def default(self, obj):

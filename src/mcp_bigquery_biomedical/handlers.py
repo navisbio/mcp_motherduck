@@ -8,7 +8,7 @@ from .tools import ToolManager
 import json
 from .resources import get_resources
 
-logger = logging.getLogger('mcp_aact_server.handlers')
+logger = logging.getLogger('mcp_bigquery_server.handlers')
 
 class MCPHandlers:
     def __init__(self, db: AACTDatabase, schema: dict):
