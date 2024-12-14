@@ -5,8 +5,9 @@ description = "MCP server for Motherduck"
 requires-python = ">=3.10"
 dependencies = [
     "mcp",
-    "duckdb",
-    "python-dotenv"
+    "psycopg2-binary",
+    "python-dotenv",
+    "google-cloud-bigquery"
 ]
 
 [project.optional-dependencies]
