@@ -1,5 +1,5 @@
 [project]
-name = "mcp-server-motherduck"
+name = "mcp-bigquery-biomedical"
 version = "0.0.1"
 description = "MCP server for Motherduck"
 requires-python = ">=3.10"
@@ -28,8 +28,9 @@ asyncio_default_fixture_loop_scope = "function"
 dev-dependencies = [
     "pyright>=1.1.389",
     "pytest>=8.3.4",
+    "psycopg2",
     "pytest-asyncio>=0.24.0",
 ]
 
 [project.scripts]
-mcp-server-motherduck = "mcp_server_motherduck:main"
+mcp-bigquery-biomedical = "mcp_bigquery_biomedical:main"

@@ -2,16 +2,16 @@ import logging
 from typing import Any
 import mcp.types as types
 from pydantic import AnyUrl
-from .database import MotherDuckDatabase
+from .database import AACTDatabase
 from .memo_manager import MemoManager
 from .tools import ToolManager
 import json
 from .resources import get_resources
 
-logger = logging.getLogger('mcp_motherduck_server.handlers')
+logger = logging.getLogger('mcp_aact_server.handlers')
 
 class MCPHandlers:
-    def __init__(self, db: MotherDuckDatabase, schema: dict):
+    def __init__(self, db: AACTDatabase, schema: dict):
         self.db = db
         self.schema = schema
         self.memo_manager = MemoManager()
@@ -36,8 +36,7 @@ class MCPHandlers:
             if scheme == "schema":
                 path = str(uri).replace("schema://", "")
                 if path == "database":
-                    # Ensure the schema information is only for the specified database
-                    return json.dumps(self.schema.get(self.db.database, {}), indent=2)
+                    return json.dumps(self.schema, indent=2)
                 else:
                     logger.error(f"Unknown schema resource: {path}")
                     raise ValueError(f"Unknown schema resource: {path}")
@@ -46,15 +45,17 @@ class MCPHandlers:
             if not path:
                 logger.error("Empty resource path")
                 raise ValueError("Empty resource path")
+
             logger.debug(f"Reading resource for path: {path}")
-            if path == "analysis":
-                return self.memo_manager.get_analysis_memo()
+            if path == "insights":
+                return self.memo_manager.get_insights_memo()
             else:
                 logger.error(f"Unknown resource path: {path}")
                 raise ValueError(f"Unknown resource path: {path}")
         except Exception as e:
-            logger.error(f"Error reading resource {uri}: {str(e)}", exc_info=True)
+            logger.error(f"Error reading resource: {str(e)}", exc_info=True)
             raise
+
     async def handle_list_prompts(self) -> list[types.Prompt]:
         logger.debug("Handling list_prompts request")
         prompts = [

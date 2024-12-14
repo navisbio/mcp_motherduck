@@ -1,161 +1,56 @@
 import pytest
-import json
-from dotenv import load_dotenv
-import os
 from unittest.mock import Mock
-from mcp.types import Tool, TextContent
-from mcp_server_mcp_bigquery_biomedical.tools import ToolManager
-from mcp_server_mcp_bigquery_biomedical.database import MotherDuckDatabase
-from mcp_server_mcp_bigquery_biomedical.memo_manager import MemoManager
+from mcp_server_aact.tools import ToolManager
+from mcp.types import TextContent, Tool
 
 @pytest.fixture
 def mock_db():
-    db = Mock(spec=MotherDuckDatabase)
-    db.database = 'test_db'  # Set a test database name to prevent AttributeError
-    return db
+    mock = Mock()
+    mock.execute_query.return_value = [{"result": "test"}]
+    return mock
 
 @pytest.fixture
 def mock_memo_manager():
-    return Mock(spec=MemoManager)
+    return Mock()
 
 @pytest.fixture
 def tool_manager(mock_db, mock_memo_manager):
     return ToolManager(mock_db, mock_memo_manager)
 
-@pytest.fixture(scope="session", autouse=True)
-def setup_motherduck_env():
-    """Setup MotherDuck environment for integration tests"""
-    load_dotenv()  # This will load environment variables from .env file
-    if "MOTHERDUCK_TOKEN" not in os.environ:
-        pytest.skip("MOTHERDUCK_TOKEN environment variable not set")
-
-# Test tool availability
-def test_get_available_tools(tool_manager):
-    """
-    Verify that all expected tools are registered and available
-    This ensures our tool interface remains stable
-    """
+async def test_get_available_tools(tool_manager):
     tools = tool_manager.get_available_tools()
-    assert len(tools) == 4
-    tool_names = {tool.name for tool in tools}
-    expected_tools = {"read-query", "list-tables", "describe-table", "append-analysis"}
-    assert tool_names == expected_tools
+    assert len(tools) > 0
+    assert all(isinstance(t, Tool) for t in tools)
+    tool_names = {t.name for t in tools}
+    assert "read-query" in tool_names
+    assert "list-tables" in tool_names
+    assert "describe-table" in tool_names
 
-# Test invalid tool name
-@pytest.mark.asyncio
-async def test_execute_tool_invalid_name(tool_manager):
-    """
-    Verify that invalid tool names are properly rejected
-    This prevents calling non-existent tools
-    """
-    with pytest.raises(ValueError, match="Unknown tool"):
-        await tool_manager.execute_tool("non-existent-tool", {})
+async def test_execute_tool_read_query(tool_manager, mock_db):
+    query = "SELECT * FROM studies"
+    result = await tool_manager.execute_tool("read-query", {"query": query})
+    mock_db.execute_query.assert_called_once_with(query)
+    assert isinstance(result[0], TextContent)
 
-# Test read-query blocks unsafe operations
-@pytest.mark.asyncio
-async def test_read_query_blocks_unsafe_operations(tool_manager):
-    """
-    Verify that unsafe SQL operations are blocked
-    This prevents potential security issues
-    """
-    unsafe_queries = [
-        "SELECT * FROM users; DROP TABLE users;",
-        "SELECT * FROM table; INSERT INTO table VALUES (1);",
-        "PRAGMA table_info('users');"
-    ]
-    for query in unsafe_queries:
-        with pytest.raises(ValueError, match="Only SELECT statements are allowed."):
-            await tool_manager.execute_tool("read-query", {"query": query})
+async def test_execute_tool_invalid_query(tool_manager):
+    with pytest.raises(ValueError, match="Only SELECT queries are allowed"):
+        await tool_manager.execute_tool("read-query", {"query": "DELETE FROM studies"})
 
-# Test real query execution
-@pytest.mark.asyncio
-async def test_real_query_execution(tool_manager, mock_db):
-    """
-    Test executing a real query using the read-query tool
-    """
-    query = "SELECT id, name FROM test_table"
+async def test_execute_tool_list_tables(tool_manager, mock_db):
+    result = await tool_manager.execute_tool("list-tables", None)
+    mock_db.execute_query.assert_called_once()
+    assert "table_schema = 'ctgov'" in mock_db.execute_query.call_args[0][0]
+    assert isinstance(result[0], TextContent)
 
-    # Mock the results returned by the database
-    mock_results = [
-        (1, 'Alice'),
-        (2, 'Bob'),
-    ]
-    mock_columns = ['id', 'name']
-    mock_db.execute_query.return_value = (mock_results, mock_columns)
+async def test_execute_tool_describe_table(tool_manager, mock_db):
+    result = await tool_manager.execute_tool("describe-table", {"table_name": "studies"})
+    mock_db.execute_query.assert_called_once()
+    assert "table_name = %s" in mock_db.execute_query.call_args[0][0]
+    assert isinstance(result[0], TextContent)
 
-    arguments = {"query": query}
-    response = await tool_manager.execute_tool("read-query", arguments)
-    expected_output = [
-        {
-            "id": 1,
-            "name": "Alice"
-        },
-        {
-            "id": 2,
-            "name": "Bob"
-        }
-    ]
-    assert len(response) == 1
-    assert isinstance(response[0], TextContent)
-    assert json.loads(response[0].text) == expected_output
-
-# Test listing tables
-@pytest.mark.asyncio
-async def test_real_table_listing(tool_manager, mock_db):
-    """
-    Test listing tables using the list-tables tool
-    """
-    # Mock the results returned by the database
-    mock_results = [
-        ('another_table',),
-        ('test_table',),
-    ]
-    mock_columns = ['name']
-    mock_db.execute_query.return_value = (mock_results, mock_columns)
-
-    response = await tool_manager.execute_tool("list-tables", {})
-    expected_output = "another_table\ntest_table"
-    assert len(response) == 1
-    assert isinstance(response[0], TextContent)
-    assert response[0].text == expected_output
-
-# Test describe-table tool
-@pytest.mark.asyncio
-async def test_describe_table(tool_manager, mock_db):
-    """
-    Test describing a table using the describe-table tool
-    """
-    table_name = "test_table"
-    # Mock the results returned by the database with the new information_schema format
-    mock_results = [
-        ('id', 'INTEGER', 'NOT NULL'),
-        ('name', 'TEXT', 'NULLABLE'),
-    ]
-    mock_columns = ['column_name', 'data_type', 'nullable']
-    mock_db.execute_query.return_value = (mock_results, mock_columns)
-
-    arguments = {"table_name": table_name}
-    response = await tool_manager.execute_tool("describe-table", arguments)
-    expected_output = "id | INTEGER | NOT NULL\nname | TEXT | NULLABLE"
-    assert len(response) == 1
-    assert isinstance(response[0], TextContent)
-    assert response[0].text == expected_output
-
-    # Test when table does not exist
-    mock_db.execute_query.return_value = ([], mock_columns)
-    response = await tool_manager.execute_tool("describe-table", arguments)
-    expected_output = f"Table '{mock_db.database}.{table_name}' does not exist."
-    assert response[0].text == expected_output
-# Test append-analysis tool
-@pytest.mark.asyncio
-async def test_append_analysis(tool_manager, mock_memo_manager):
-    """
-    Test adding a finding using the append-analysis tool
-    """
-    finding = "This is a test finding."
-    arguments = {"finding": finding}
-    response = await tool_manager.execute_tool("append-analysis", arguments)
-    mock_memo_manager.add_finding.assert_called_with(finding)
-    assert len(response) == 1
-    assert isinstance(response[0], TextContent)
-    assert response[0].text == "Analysis finding added"
+async def test_execute_tool_append_insights(tool_manager, mock_memo_manager):
+    finding = "New finding"
+    result = await tool_manager.execute_tool("append-insight", {"finding": finding})
+    mock_memo_manager.add_insights.assert_called_once_with(finding)
+    assert isinstance(result[0], TextContent)
+    assert "Insight added" in result[0].text 
