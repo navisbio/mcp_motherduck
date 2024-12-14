@@ -156,18 +156,20 @@ class ToolManager:
 
                 search_query = arguments["search"]
                 logger.debug(f"Searching for gene names with query: {search_query}")
-                gene_names = self.get_gene_names_service(search_query)
+                # Await the async function call
+                gene_names = await self.get_gene_names_service(search_query)
                 logger.info(f"Retrieved {len(gene_names)} gene names")
                 return [types.TextContent(type="text", text=str(gene_names))]
+
 
         except Exception as e:
             logger.error(f"Error executing tool {name}: {str(e)}", exc_info=True)
             raise
 
-    def get_gene_names_service(self, search: str) -> list[str]:
+    async def get_gene_names_service(self, search: str) -> list[str]:
         """Searches for gene names in the OpenTargets BigQuery dataset."""
         query = """
-        SELECT DISTINCT approvedSymbol
+        SELECT DISTINCT approvedSymbol, sort_order
         FROM (
             SELECT
                 approvedSymbol,
