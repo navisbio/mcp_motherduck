@@ -15,25 +15,33 @@ class ToolManager:
         self.memo_manager = memo_manager
         self.db = db  # Use the BigQueryDatabase instance
         logger.info("ToolManager initialized with BigQueryDatabase")
-
     def get_available_tools(self) -> list[types.Tool]:
         """Return list of available tools."""
         logger.debug("Retrieving available tools")
         tools = [
             types.Tool(
                 name="read-query",
-                description="Execute a SELECT query on the BigQuery Open Targets platform dataset. Use this tool to extract and analyze specific data from any table.",
+                description=(
+                    "Execute a SELECT query on the Open Targets BigQuery public datasets. "
+                    "Use this tool to extract and analyze specific data from tables such as associations, evidence, targets, diseases, or drugs. "
+                    "For example, you can query target-disease associations or retrieve evidence supporting a particular association. "
+                    "IMPORTANT: When using this tool, your answer must be based solely on the data retrieved from the query. "
+                    "If you want to use your own knowledge instead, inform the user that you did not use the data and ask if they agree with you using your own knowledge."
+                ),
                 inputSchema={
                     "type": "object",
                     "properties": {
-                        "query": {"type": "string", "description": "SELECT SQL query to execute"},
+                        "query": {"type": "string", "description": "SELECT SQL query to execute on Open Targets datasets"},
                     },
                     "required": ["query"],
                 },
             ),
             types.Tool(
                 name="list-tables",
-                description="Get an overview of all available tables in the Open Targets platform dataset. This tool helps you understand the dataset structure before starting your analysis to identify relevant data sources.",
+                description=(
+                    "Retrieve a list of all available tables in the Open Targets BigQuery public datasets. "
+                    "This tool helps you understand the dataset structure and explore available data such as targets, diseases, associations, evidence, and drugs before starting your analysis."
+                ),
                 inputSchema={
                     "type": "object",
                     "properties": {},
@@ -41,41 +49,36 @@ class ToolManager:
             ),
             types.Tool(
                 name="describe-table",
-                description="Examine the detailed structure of a specific table in the Open Targets platform dataset, including column names and data types. Use this before querying to ensure you target the right columns and understand the data format.",
+                description=(
+                    "Get detailed schema information of a specific table in the Open Targets BigQuery public datasets, including column names, data types, and descriptions. "
+                    "Use this tool to understand the data fields available in tables like 'associations', 'evidence', 'targets', 'diseases', or 'drugs' to construct accurate queries."
+                ),
                 inputSchema={
                     "type": "object",
                     "properties": {
-                        "table_name": {"type": "string", "description": "Name of the table to describe"},
+                        "table_name": {"type": "string", "description": "Name of the Open Targets table to describe"},
                     },
                     "required": ["table_name"],
                 },
             ),
             types.Tool(
                 name="append-insight",
-                description="Record key findings and insights discovered during your analysis. Use this tool whenever you uncover meaningful patterns, trends, or notable observations about the data. This helps build a comprehensive analytical narrative and ensures important discoveries are documented.",
+                description=(
+                    "Record key findings and insights discovered during your analysis of the Open Targets datasets. "
+                    "Use this tool whenever you uncover meaningful patterns, trends, or notable observations about targets, diseases, associations, or drugs. "
+                    "This helps build a comprehensive analytical narrative and ensures important discoveries are documented."
+                ),
                 inputSchema={
                     "type": "object",
                     "properties": {
-                        "finding": {"type": "string", "description": "Analysis finding about data patterns or trends"},
+                        "finding": {"type": "string", "description": "Analysis finding about Open Targets data patterns or trends"},
                     },
                     "required": ["finding"],
-                },
-            ),
-            types.Tool(
-                name="search-gene-names",
-                description="Search for gene names in the Open Targets BigQuery dataset based on a search query.",
-                inputSchema={
-                    "type": "object",
-                    "properties": {
-                        "search": {"type": "string", "description": "Search query for gene names"},
-                    },
-                    "required": ["search"],
                 },
             ),
         ]
         logger.debug(f"Retrieved {len(tools)} available tools")
         return tools
-
     async def execute_tool(self, name: str, arguments: dict[str, Any] | None) -> list[types.TextContent]:
         """Execute a tool with given arguments."""
         logger.info(f"Executing tool: {name} with arguments: {arguments}")
@@ -131,9 +134,6 @@ class ToolManager:
 
             elif name == "read-query":
                 query = arguments.get("query", "").strip()
-                if not query.lower().startswith("select"):
-                    logger.error("Only SELECT queries are allowed for read-query tool")
-                    raise ValueError("Only SELECT queries are allowed")
 
                 logger.debug(f"Executing query: {query}")
                 rows = self.db.execute_query(query)
@@ -151,37 +151,8 @@ class ToolManager:
                 logger.info("Insight added successfully")
                 return [types.TextContent(type="text", text="Insight added")]
 
-            elif name == "search-gene-names":
-                if "search" not in arguments:
-                    logger.error("Missing search argument for search-gene-names")
-                    raise ValueError("Missing search argument")
-
-                search_query = arguments["search"]
-                logger.debug(f"Searching for gene names with query: {search_query}")
-                gene_names = await self.get_gene_names_service(search_query)
-                logger.info(f"Retrieved {len(gene_names)} gene names")
-                return [types.TextContent(type="text", text=str(gene_names))]
 
         except Exception as e:
             logger.error(f"Error executing tool {name}: {str(e)}", exc_info=True)
             raise
 
-    async def get_gene_names_service(self, search: str) -> list[str]:
-        """Searches for gene names in the Open Targets BigQuery dataset."""
-        search_pattern = f"%{search.lower()}%"
-        query = """
-            SELECT DISTINCT approvedSymbol
-            FROM `bigquery-public-data.open_targets_platform.targets`
-            WHERE LOWER(approvedSymbol) LIKE @search
-                OR LOWER(id) LIKE @search
-                OR LOWER(approvedName) LIKE @search
-                OR EXISTS(SELECT 1 FROM UNNEST(symbolSynonyms.list) syn WHERE LOWER(syn.element.label) LIKE @search)
-                OR EXISTS(SELECT 1 FROM UNNEST(nameSynonyms.list) syn WHERE LOWER(syn.element.label) LIKE @search)
-                OR EXISTS(SELECT 1 FROM UNNEST(obsoleteNames.list) syn WHERE LOWER(syn.element.label) LIKE @search)
-            LIMIT 50;
-        """
-        params = {"search": search_pattern}
-        rows = self.db.execute_query(query, params)
-        gene_names = [row['approvedSymbol'] for row in rows]
-        logger.debug(f"Gene names retrieved: {gene_names}")
-        return gene_names
