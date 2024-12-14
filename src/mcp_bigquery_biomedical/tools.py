@@ -1,32 +1,20 @@
 import logging
-import os
 from typing import Any
 
 from google.cloud import bigquery
-from google.oauth2 import service_account
 
 import mcp.types as types
 from .memo_manager import MemoManager
+from .database import BigQueryDatabase  # Import the BigQueryDatabase class
 
 logger = logging.getLogger('mcp_bigquery_biomedical.tools')
 
 
 class ToolManager:
-    def __init__(self, db, memo_manager: MemoManager):
+    def __init__(self, db: BigQueryDatabase, memo_manager: MemoManager):
         self.memo_manager = memo_manager
-        self.db = db
-        logger.info("ToolManager initialized with BigQuery client")
-
-    # def _initialize_bigquery_client(self) -> bigquery.Client:
-    #     """Initializes the BigQuery client."""
-    #     logger.debug("Initializing BigQuery client")
-    #     credentials = service_account.Credentials.from_service_account_file(
-    #         os.environ.get('GOOGLE_APPLICATION_CREDENTIALS'),
-    #         scopes=["https://www.googleapis.com/auth/cloud-platform"]
-    #     )
-    #     client = bigquery.Client(credentials=credentials, project=credentials.project_id)
-    #     logger.info("BigQuery client initialized")
-    #     return client
+        self.db = db  # Use the BigQueryDatabase instance
+        logger.info("ToolManager initialized with BigQueryDatabase")
 
     def get_available_tools(self) -> list[types.Tool]:
         """Return list of available tools."""
@@ -109,9 +97,9 @@ class ToolManager:
                     FROM `bigquery-public-data.open_targets_platform.INFORMATION_SCHEMA.TABLES`
                     ORDER BY table_name;
                 """
-                query_job = self.db.query(query)
-                results = query_job.result()
-                tables = [row.table_name for row in results]
+                # Use the database's execute_query method
+                rows = self.db.execute_query(query)
+                tables = [row['table_name'] for row in rows]
                 logger.info(f"Retrieved {len(tables)} tables")
                 return [types.TextContent(type="text", text=str(tables))]
 
@@ -122,30 +110,33 @@ class ToolManager:
 
                 table_name = arguments["table_name"]
                 logger.debug(f"Describing table: {table_name}")
-                query = f"""
+                query = """
                     SELECT column_name, data_type, is_nullable
                     FROM `bigquery-public-data.open_targets_platform.INFORMATION_SCHEMA.COLUMNS`
                     WHERE table_name = @table_name
                     ORDER BY ordinal_position;
                 """
-                job_config = bigquery.QueryJobConfig(
-                    query_parameters=[
-                        bigquery.ScalarQueryParameter("table_name", "STRING", table_name)
-                    ]
-                )
-                query_job = self.db.query(query, job_config=job_config)
-                results = query_job.result()
-                columns = [{"column_name": row.column_name, "data_type": row.data_type, "is_nullable": row.is_nullable} for row in results]
+                params = {"table_name": table_name}
+                rows = self.db.execute_query(query, params)
+                columns = [
+                    {
+                        "column_name": row['column_name'],
+                        "data_type": row['data_type'],
+                        "is_nullable": row['is_nullable'],
+                    }
+                    for row in rows
+                ]
                 logger.info(f"Retrieved {len(columns)} columns for table {table_name}")
                 return [types.TextContent(type="text", text=str(columns))]
 
             elif name == "read-query":
                 query = arguments.get("query", "").strip()
+                if not query.lower().startswith("select"):
+                    logger.error("Only SELECT queries are allowed for read-query tool")
+                    raise ValueError("Only SELECT queries are allowed")
 
                 logger.debug(f"Executing query: {query}")
-                query_job = self.db.query(query)
-                results = query_job.result()
-                rows = [dict(row) for row in results]
+                rows = self.db.execute_query(query)
                 logger.info(f"Query returned {len(rows)} rows")
                 return [types.TextContent(type="text", text=str(rows))]
 
@@ -189,14 +180,8 @@ class ToolManager:
                 OR EXISTS(SELECT 1 FROM UNNEST(obsoleteNames.list) syn WHERE LOWER(syn.element.label) LIKE @search)
             LIMIT 50;
         """
-        job_config = bigquery.QueryJobConfig(
-            query_parameters=[
-                bigquery.ScalarQueryParameter("search", "STRING", search_pattern)
-            ]
-        )
-        logger.debug("Running BigQuery job for gene name search")
-        query_job = self.db.query(query, job_config=job_config)
-        results = query_job.result()
-        gene_names = [row.approvedSymbol for row in results]
+        params = {"search": search_pattern}
+        rows = self.db.execute_query(query, params)
+        gene_names = [row['approvedSymbol'] for row in rows]
         logger.debug(f"Gene names retrieved: {gene_names}")
         return gene_names
