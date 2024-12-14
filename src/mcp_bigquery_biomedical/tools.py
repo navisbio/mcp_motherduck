@@ -12,21 +12,21 @@ logger = logging.getLogger('mcp_bigquery_biomedical.tools')
 
 
 class ToolManager:
-    def __init__(self, memo_manager: MemoManager):
+    def __init__(self, db, memo_manager: MemoManager):
         self.memo_manager = memo_manager
-        self.bigquery_client = self._initialize_bigquery_client()
+        self.db = db
         logger.info("ToolManager initialized with BigQuery client")
 
-    def _initialize_bigquery_client(self) -> bigquery.Client:
-        """Initializes the BigQuery client."""
-        logger.debug("Initializing BigQuery client")
-        credentials = service_account.Credentials.from_service_account_file(
-            os.environ.get('GOOGLE_APPLICATION_CREDENTIALS'),
-            scopes=["https://www.googleapis.com/auth/cloud-platform"]
-        )
-        client = bigquery.Client(credentials=credentials, project=credentials.project_id)
-        logger.info("BigQuery client initialized")
-        return client
+    # def _initialize_bigquery_client(self) -> bigquery.Client:
+    #     """Initializes the BigQuery client."""
+    #     logger.debug("Initializing BigQuery client")
+    #     credentials = service_account.Credentials.from_service_account_file(
+    #         os.environ.get('GOOGLE_APPLICATION_CREDENTIALS'),
+    #         scopes=["https://www.googleapis.com/auth/cloud-platform"]
+    #     )
+    #     client = bigquery.Client(credentials=credentials, project=credentials.project_id)
+    #     logger.info("BigQuery client initialized")
+    #     return client
 
     def get_available_tools(self) -> list[types.Tool]:
         """Return list of available tools."""
@@ -109,7 +109,7 @@ class ToolManager:
                     FROM `bigquery-public-data.open_targets_platform.INFORMATION_SCHEMA.TABLES`
                     ORDER BY table_name;
                 """
-                query_job = self.bigquery_client.query(query)
+                query_job = self.db.query(query)
                 results = query_job.result()
                 tables = [row.table_name for row in results]
                 logger.info(f"Retrieved {len(tables)} tables")
@@ -133,7 +133,7 @@ class ToolManager:
                         bigquery.ScalarQueryParameter("table_name", "STRING", table_name)
                     ]
                 )
-                query_job = self.bigquery_client.query(query, job_config=job_config)
+                query_job = self.db.query(query, job_config=job_config)
                 results = query_job.result()
                 columns = [{"column_name": row.column_name, "data_type": row.data_type, "is_nullable": row.is_nullable} for row in results]
                 logger.info(f"Retrieved {len(columns)} columns for table {table_name}")
@@ -143,7 +143,7 @@ class ToolManager:
                 query = arguments.get("query", "").strip()
 
                 logger.debug(f"Executing query: {query}")
-                query_job = self.bigquery_client.query(query)
+                query_job = self.db.query(query)
                 results = query_job.result()
                 rows = [dict(row) for row in results]
                 logger.info(f"Query returned {len(rows)} rows")
@@ -195,7 +195,7 @@ class ToolManager:
             ]
         )
         logger.debug("Running BigQuery job for gene name search")
-        query_job = self.bigquery_client.query(query, job_config=job_config)
+        query_job = self.db.query(query, job_config=job_config)
         results = query_job.result()
         gene_names = [row.approvedSymbol for row in results]
         logger.debug(f"Gene names retrieved: {gene_names}")
