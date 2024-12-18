@@ -7,7 +7,10 @@ dependencies = [
     "mcp",
     "psycopg2-binary",
     "python-dotenv",
-    "google-cloud-bigquery"
+    "google-cloud-bigquery",
+    "duckdb",
+    "pandas"
+
 ]
 
 [project.optional-dependencies]

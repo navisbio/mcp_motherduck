@@ -2,24 +2,40 @@ import logging
 from mcp.server import Server, NotificationOptions, RequestContext
 from mcp.server.models import InitializationOptions
 import mcp.server.stdio
-from .database import BigQueryDatabase
+from .database import MotherDuckDatabase
 from .handlers import MCPHandlers
 from mcp.types import LoggingLevel, EmptyResult
 import json
 from pathlib import Path
 
-logger = logging.getLogger('mcp_bigquery_server')
+logger = logging.getLogger('mcp_motherduck_server')
 logger.setLevel(logging.DEBUG)
 
 class AACTServer(Server):
     def __init__(self):
         super().__init__("aact-manager")
-        self.db = BigQueryDatabase()
+        self.db = MotherDuckDatabase()
         
-        # Load the schema resource
-        schema_path = Path(__file__).parent / "resources" / "database_schema.json"
-        with open(schema_path) as f:
-            self.schema = json.load(f)
+        try:
+            # Load the schema resource
+            schema_path = Path(__file__).parent / "resources" / "database_schema.json"
+            logger.debug(f"Loading schema from: {schema_path}")
+            
+            if not schema_path.exists():
+                logger.warning("Schema file not found, using empty schema")
+                self.schema = {}
+            else:
+                with open(schema_path) as f:
+                    self.schema = json.load(f)
+                    logger.debug("Schema loaded successfully")
+        except json.JSONDecodeError as e:
+            logger.error(f"Error parsing schema file: {e}")
+            logger.warning("Using empty schema due to parsing error")
+            self.schema = {}
+        except Exception as e:
+            logger.error(f"Unexpected error loading schema: {e}")
+            logger.warning("Using empty schema due to error")
+            self.schema = {}
         
         # Pass schema to handlers
         self.handlers = MCPHandlers(self.db, self.schema)
@@ -58,7 +74,7 @@ class AACTServer(Server):
         async def handle_set_logging_level(level: LoggingLevel) -> EmptyResult:
             """Handle requests to change the logging level"""
             logger.info(f"Setting logging level to {level}")
-            logging.getLogger('mcp_bigquery_server').setLevel(level.upper())
+            logging.getLogger('mcp_motherduck_server').setLevel(level.upper())
             
             # Send confirmation through the session
             if hasattr(self, 'request_context') and self.request_context:

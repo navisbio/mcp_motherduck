@@ -1,20 +1,21 @@
 import logging
-from typing import Any
-
-from google.cloud import bigquery
-
+from typing import Any, Optional
 import mcp.types as types
+from datetime import datetime
+import pandas as pd
+import numpy as np
 from .memo_manager import MemoManager
-from .database import BigQueryDatabase  # Import the BigQueryDatabase class
+from .database import MotherDuckDatabase  # Changed from BigQueryDatabase
 
-logger = logging.getLogger('mcp_bigquery_biomedical.tools')
+logger = logging.getLogger('mcp_motherduck_server.tools')  # Updated logger name
 
 
 class ToolManager:
-    def __init__(self, db: BigQueryDatabase, memo_manager: MemoManager):
+    def __init__(self, db: MotherDuckDatabase, memo_manager: MemoManager):  # Updated type hint
+        self.db = db
         self.memo_manager = memo_manager
-        self.db = db  # Use the BigQueryDatabase instance
-        logger.info("ToolManager initialized with BigQueryDatabase")
+        logger.info("ToolManager initialized")
+
     def get_available_tools(self) -> list[types.Tool]:
         """Return list of available tools."""
         logger.debug("Retrieving available tools")
@@ -79,6 +80,7 @@ class ToolManager:
         ]
         logger.debug(f"Retrieved {len(tools)} available tools")
         return tools
+
     async def execute_tool(self, name: str, arguments: dict[str, Any] | None) -> list[types.TextContent]:
         """Execute a tool with given arguments."""
         logger.info(f"Executing tool: {name} with arguments: {arguments}")
