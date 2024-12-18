@@ -22,26 +22,32 @@ class ToolManager:
             types.Tool(
                 name="list-tables",
                 description=(
-                    "Lists all available tables in the clinical trials database. "
-                    "Use this to explore the database structure and available data tables."
+                    "Lists all available tables in the database with their full names (database.schema.table). "
+                    "Optionally filter tables by database name."
                 ),
                 inputSchema={
                     "type": "object",
-                    "properties": {},
+                    "properties": {
+                        "database": {
+                            "type": "string",
+                            "description": "Optional database name to filter tables"
+                        }
+                    },
                 },
             ),
             types.Tool(
                 name="describe-table",
                 description=(
                     "Get detailed information about a specific table's structure including column names and types. "
-                    "Use this to understand what data is available in each table."
+                    "Use this to understand what data is available in each table. "
+                    "Provide the full table name in format: database.schema.table"
                 ),
                 inputSchema={
                     "type": "object",
                     "properties": {
                         "table_name": {
                             "type": "string",
-                            "description": "Name of the table to describe"
+                            "description": "Full name of the table (e.g., 'database.schema.table')"
                         },
                     },
                     "required": ["table_name"],
@@ -91,17 +97,39 @@ class ToolManager:
 
         try:
             if name == "list-tables":
+                database_filter = arguments.get('database') if arguments else None
+                
                 query = """
-                SELECT table_name 
-                FROM information_schema.tables 
-                WHERE table_schema = 'main'
-                ORDER BY table_name;
+                SELECT 
+                    table_catalog as database_name,
+                    table_schema as schema_name,
+                    table_name,
+                    concat(table_catalog, '.', table_schema, '.', table_name) as full_name
+                FROM information_schema.tables
+                WHERE table_type = 'BASE TABLE'
                 """
+                
+                if database_filter:
+                    query += f" AND table_catalog = '{database_filter}'"
+                
+                query += " ORDER BY table_catalog, table_schema, table_name;"
+                
                 results = self.db.execute_query(query)
-                tables = [row['table_name'] for row in results]
+                
+                if not results:
+                    return [types.TextContent(
+                        type="text",
+                        text="No tables found" + (f" in database '{database_filter}'" if database_filter else "")
+                    )]
+                
+                # Format the output
+                output_lines = ["Available tables:"]
+                for row in results:
+                    output_lines.append(f"- {row['full_name']}")
+                
                 return [types.TextContent(
                     type="text",
-                    text=f"Available tables:\n{', '.join(tables)}"
+                    text="\n".join(output_lines)
                 )]
 
             elif name == "describe-table":
@@ -109,11 +137,25 @@ class ToolManager:
                     raise ValueError("Table name is required")
                 
                 table_name = arguments["table_name"]
+                
+                # Split the full table name into parts
+                parts = table_name.split('.')
+                if len(parts) != 3:
+                    raise ValueError("Table name must be in format: database.schema.table")
+                
+                database, schema, table = parts
+                
                 query = f"""
-                SELECT column_name, data_type, is_nullable
+                SELECT 
+                    column_name,
+                    data_type,
+                    is_nullable,
+                    column_default,
+                    ordinal_position
                 FROM information_schema.columns
-                WHERE table_name = '{table_name}'
-                AND table_schema = 'main'
+                WHERE table_catalog = '{database}'
+                AND table_schema = '{schema}'
+                AND table_name = '{table}'
                 ORDER BY ordinal_position;
                 """
                 results = self.db.execute_query(query)
@@ -125,9 +167,11 @@ class ToolManager:
                     )]
                 
                 description = [
-                    f"Table: {table_name}\n",
+                    f"Table: {table_name}",
                     "Columns:",
-                    *[f"- {row['column_name']} ({row['data_type']}, {'NULL' if row['is_nullable'] == 'YES' else 'NOT NULL'})"
+                    *[f"- {row['column_name']} ({row['data_type']}, "
+                      f"{'NULL' if row['is_nullable'] == 'YES' else 'NOT NULL'}"
+                      f"{', DEFAULT: ' + str(row['column_default']) if row['column_default'] else ''})"
                       for row in results]
                 ]
                 return [types.TextContent(
