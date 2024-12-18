@@ -20,34 +20,6 @@ class ToolManager:
         logger.debug("Retrieving available tools")
         tools = [
             types.Tool(
-                name="list-databases",
-                description=(
-                    "Lists all available databases in MotherDuck. "
-                    "Use this to see what databases you can connect to."
-                ),
-                inputSchema={
-                    "type": "object",
-                    "properties": {},
-                },
-            ),
-            types.Tool(
-                name="use-database",
-                description=(
-                    "Switch to a different database in MotherDuck. "
-                    "Use this to change which database you're querying."
-                ),
-                inputSchema={
-                    "type": "object",
-                    "properties": {
-                        "database": {
-                            "type": "string",
-                            "description": "Name of the database to use"
-                        },
-                    },
-                    "required": ["database"],
-                },
-            ),
-            types.Tool(
                 name="list-tables",
                 description=(
                     "Lists all available tables in the clinical trials database. "
@@ -118,28 +90,7 @@ class ToolManager:
         logger.info(f"Executing tool: {name} with arguments: {arguments}")
 
         try:
-            if name == "list-databases":
-                query = "SHOW DATABASES;"
-                results = self.db.execute_query(query)
-                databases = [row['database_name'] for row in results]
-                return [types.TextContent(
-                    type="text",
-                    text=f"Available databases:\n{', '.join(databases)}"
-                )]
-
-            elif name == "use-database":
-                if not arguments or "database" not in arguments:
-                    raise ValueError("Database name is required")
-                
-                database = arguments["database"]
-                query = f"USE {database};"
-                self.db.execute_query(query)
-                return [types.TextContent(
-                    type="text",
-                    text=f"Switched to database: {database}"
-                )]
-
-            elif name == "list-tables":
+            if name == "list-tables":
                 query = """
                 SELECT table_name 
                 FROM information_schema.tables 

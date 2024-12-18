@@ -25,12 +25,13 @@ class MotherDuckDatabase:
 
         try:
             # Connect to MotherDuck with token set during initialization
-            conn = duckdb.connect(f"md:", config={
+            conn = duckdb.connect("md:", config={
                 'motherduck_token': motherduck_token
             }, read_only=True)
             
             logger.info("MotherDuck connection initialized")
             return conn
+
         except Exception as e:
             logger.error(f"Error connecting to MotherDuck: {str(e)}", exc_info=True)
             raise
