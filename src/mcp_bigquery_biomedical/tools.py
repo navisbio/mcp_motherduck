@@ -5,13 +5,12 @@ from datetime import datetime
 import pandas as pd
 import numpy as np
 from .memo_manager import MemoManager
-from .database import MotherDuckDatabase  # Changed from BigQueryDatabase
+from .database import MotherDuckDatabase
 
-logger = logging.getLogger('mcp_motherduck_server.tools')  # Updated logger name
-
+logger = logging.getLogger('mcp_motherduck_server.tools')
 
 class ToolManager:
-    def __init__(self, db: MotherDuckDatabase, memo_manager: MemoManager):  # Updated type hint
+    def __init__(self, db: MotherDuckDatabase, memo_manager: MemoManager):
         self.db = db
         self.memo_manager = memo_manager
         logger.info("ToolManager initialized")
@@ -21,27 +20,38 @@ class ToolManager:
         logger.debug("Retrieving available tools")
         tools = [
             types.Tool(
-                name="read-query",
+                name="list-databases",
                 description=(
-                    "Execute a SELECT query on the Open Targets BigQuery public datasets. "
-                    "Use this tool to extract and analyze specific data from tables such as associations, evidence, targets, diseases, or drugs. "
-                    "For example, you can query target-disease associations or retrieve evidence supporting a particular association. "
-                    "IMPORTANT: When using this tool, your answer must be based solely on the data retrieved from the query. "
-                    "If you want to use your own knowledge instead, inform the user that you did not use the data and ask if they agree with you using your own knowledge."
+                    "Lists all available databases in MotherDuck. "
+                    "Use this to see what databases you can connect to."
+                ),
+                inputSchema={
+                    "type": "object",
+                    "properties": {},
+                },
+            ),
+            types.Tool(
+                name="use-database",
+                description=(
+                    "Switch to a different database in MotherDuck. "
+                    "Use this to change which database you're querying."
                 ),
                 inputSchema={
                     "type": "object",
                     "properties": {
-                        "query": {"type": "string", "description": "SELECT SQL query to execute on Open Targets datasets"},
+                        "database": {
+                            "type": "string",
+                            "description": "Name of the database to use"
+                        },
                     },
-                    "required": ["query"],
+                    "required": ["database"],
                 },
             ),
             types.Tool(
                 name="list-tables",
                 description=(
-                    "Retrieve a list of all available tables in the Open Targets BigQuery public datasets. "
-                    "This tool helps you understand the dataset structure and explore available data such as targets, diseases, associations, evidence, and drugs before starting your analysis."
+                    "Lists all available tables in the clinical trials database. "
+                    "Use this to explore the database structure and available data tables."
                 ),
                 inputSchema={
                     "type": "object",
@@ -51,30 +61,52 @@ class ToolManager:
             types.Tool(
                 name="describe-table",
                 description=(
-                    "Get detailed schema information of a specific table in the Open Targets BigQuery public datasets, including column names, data types, and descriptions. "
-                    "Use this tool to understand the data fields available in tables like 'associations', 'evidence', 'targets', 'diseases', or 'drugs' to construct accurate queries."
+                    "Get detailed information about a specific table's structure including column names and types. "
+                    "Use this to understand what data is available in each table."
                 ),
                 inputSchema={
                     "type": "object",
                     "properties": {
-                        "table_name": {"type": "string", "description": "Name of the Open Targets table to describe"},
+                        "table_name": {
+                            "type": "string",
+                            "description": "Name of the table to describe"
+                        },
                     },
                     "required": ["table_name"],
                 },
             ),
             types.Tool(
-                name="append-insight",
+                name="query",
                 description=(
-                    "Record key findings and insights discovered during your analysis of the Open Targets datasets. "
-                    "Use this tool whenever you uncover meaningful patterns, trends, or notable observations about targets, diseases, associations, or drugs. "
-                    "This helps build a comprehensive analytical narrative and ensures important discoveries are documented."
+                    "Execute a SQL query on the clinical trials database. "
+                    "Use this to analyze clinical trial data and extract specific information."
                 ),
                 inputSchema={
                     "type": "object",
                     "properties": {
-                        "finding": {"type": "string", "description": "Analysis finding about Open Targets data patterns or trends"},
+                        "sql": {
+                            "type": "string",
+                            "description": "SQL query to execute"
+                        },
                     },
-                    "required": ["finding"],
+                    "required": ["sql"],
+                },
+            ),
+            types.Tool(
+                name="append-insight",
+                description=(
+                    "Record an insight or observation about the clinical trials data. "
+                    "Use this to document important findings during analysis."
+                ),
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "insight": {
+                            "type": "string",
+                            "description": "The insight to record"
+                        },
+                    },
+                    "required": ["insight"],
                 },
             ),
         ]
@@ -86,73 +118,105 @@ class ToolManager:
         logger.info(f"Executing tool: {name} with arguments: {arguments}")
 
         try:
-            available_tool_names = {tool.name for tool in self.get_available_tools()}
-            if name not in available_tool_names:
-                logger.error(f"Unknown tool requested: {name}")
-                raise ValueError(f"Unknown tool: {name}")
+            if name == "list-databases":
+                query = "SHOW DATABASES;"
+                results = self.db.execute_query(query)
+                databases = [row['database_name'] for row in results]
+                return [types.TextContent(
+                    type="text",
+                    text=f"Available databases:\n{', '.join(databases)}"
+                )]
 
-            if not arguments and name != "list-tables":
-                logger.error("Missing required arguments for tool execution")
-                raise ValueError("Missing required arguments")
+            elif name == "use-database":
+                if not arguments or "database" not in arguments:
+                    raise ValueError("Database name is required")
+                
+                database = arguments["database"]
+                query = f"USE {database};"
+                self.db.execute_query(query)
+                return [types.TextContent(
+                    type="text",
+                    text=f"Switched to database: {database}"
+                )]
 
-            if name == "list-tables":
-                logger.debug("Listing tables from BigQuery dataset")
+            elif name == "list-tables":
                 query = """
-                    SELECT table_name
-                    FROM `bigquery-public-data.open_targets_platform.INFORMATION_SCHEMA.TABLES`
-                    ORDER BY table_name;
+                SELECT table_name 
+                FROM information_schema.tables 
+                WHERE table_schema = 'main'
+                ORDER BY table_name;
                 """
-                # Use the database's execute_query method
-                rows = self.db.execute_query(query)
-                tables = [row['table_name'] for row in rows]
-                logger.info(f"Retrieved {len(tables)} tables")
-                return [types.TextContent(type="text", text=str(tables))]
+                results = self.db.execute_query(query)
+                tables = [row['table_name'] for row in results]
+                return [types.TextContent(
+                    type="text",
+                    text=f"Available tables:\n{', '.join(tables)}"
+                )]
 
             elif name == "describe-table":
-                if "table_name" not in arguments:
-                    logger.error("Missing table_name argument for describe-table")
-                    raise ValueError("Missing table_name argument")
-
+                if not arguments or "table_name" not in arguments:
+                    raise ValueError("Table name is required")
+                
                 table_name = arguments["table_name"]
-                logger.debug(f"Describing table: {table_name}")
-                query = """
-                    SELECT column_name, data_type, is_nullable
-                    FROM `bigquery-public-data.open_targets_platform.INFORMATION_SCHEMA.COLUMNS`
-                    WHERE table_name = @table_name
-                    ORDER BY ordinal_position;
+                query = f"""
+                SELECT column_name, data_type, is_nullable
+                FROM information_schema.columns
+                WHERE table_name = '{table_name}'
+                AND table_schema = 'main'
+                ORDER BY ordinal_position;
                 """
-                params = {"table_name": table_name}
-                rows = self.db.execute_query(query, params)
-                columns = [
-                    {
-                        "column_name": row['column_name'],
-                        "data_type": row['data_type'],
-                        "is_nullable": row['is_nullable'],
-                    }
-                    for row in rows
+                results = self.db.execute_query(query)
+                
+                if not results:
+                    return [types.TextContent(
+                        type="text",
+                        text=f"No columns found for table '{table_name}'"
+                    )]
+                
+                description = [
+                    f"Table: {table_name}\n",
+                    "Columns:",
+                    *[f"- {row['column_name']} ({row['data_type']}, {'NULL' if row['is_nullable'] == 'YES' else 'NOT NULL'})"
+                      for row in results]
                 ]
-                logger.info(f"Retrieved {len(columns)} columns for table {table_name}")
-                return [types.TextContent(type="text", text=str(columns))]
+                return [types.TextContent(
+                    type="text",
+                    text="\n".join(description)
+                )]
 
-            elif name == "read-query":
-                query = arguments.get("query", "").strip()
-
-                logger.debug(f"Executing query: {query}")
-                rows = self.db.execute_query(query)
-                logger.info(f"Query returned {len(rows)} rows")
-                return [types.TextContent(type="text", text=str(rows))]
+            elif name == "query":
+                if not arguments or "sql" not in arguments:
+                    raise ValueError("SQL query is required")
+                
+                sql = arguments["sql"]
+                results = self.db.execute_query(sql)
+                
+                if not results:
+                    return [types.TextContent(
+                        type="text",
+                        text="Query returned no results"
+                    )]
+                
+                # Convert results to a formatted string
+                df = pd.DataFrame(results)
+                return [types.TextContent(
+                    type="text",
+                    text=df.to_string()
+                )]
 
             elif name == "append-insight":
-                if "finding" not in arguments:
-                    logger.error("Missing finding argument for append-insight")
-                    raise ValueError("Missing finding argument")
+                if not arguments or "insight" not in arguments:
+                    raise ValueError("Insight text is required")
+                
+                insight = arguments["insight"]
+                self.memo_manager.add_insights(insight)
+                return [types.TextContent(
+                    type="text",
+                    text="Insight recorded successfully"
+                )]
 
-                finding = arguments["finding"]
-                logger.debug(f"Adding insight: {finding[:50]}...")
-                self.memo_manager.add_insights(finding)
-                logger.info("Insight added successfully")
-                return [types.TextContent(type="text", text="Insight added")]
-
+            else:
+                raise ValueError(f"Unknown tool: {name}")
 
         except Exception as e:
             logger.error(f"Error executing tool {name}: {str(e)}", exc_info=True)
