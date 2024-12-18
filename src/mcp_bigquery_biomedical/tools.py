@@ -22,15 +22,15 @@ class ToolManager:
             types.Tool(
                 name="list-tables",
                 description=(
-                    "Lists all available tables in the database with their full names (database.schema.table). "
-                    "Optionally filter tables by database name."
+                    "Lists all available tables in the MotherDuck database with their full names (database.schema.table). "
+                    "Uses DuckDB syntax. Optionally filter tables by database name."
                 ),
                 inputSchema={
                     "type": "object",
                     "properties": {
                         "database": {
                             "type": "string",
-                            "description": "Optional database name to filter tables"
+                            "description": "Optional database name to filter tables (e.g., 'compound_pipeline')"
                         }
                     },
                 },
@@ -38,16 +38,17 @@ class ToolManager:
             types.Tool(
                 name="describe-table",
                 description=(
-                    "Get detailed information about a specific table's structure including column names and types. "
-                    "Use this to understand what data is available in each table. "
-                    "Provide the full table name in format: database.schema.table"
+                    "Get detailed information about a specific table's structure using DuckDB syntax. "
+                    "Shows column names, types, nullability, and default values. "
+                    "Provide the full table name in format: database.schema.table "
+                    "(e.g., 'compound_pipeline.clinicaltrials.investigationalagent')"
                 ),
                 inputSchema={
                     "type": "object",
                     "properties": {
                         "table_name": {
                             "type": "string",
-                            "description": "Full name of the table (e.g., 'database.schema.table')"
+                            "description": "Full table name in DuckDB format (e.g., 'compound_pipeline.clinicaltrials.investigationalagent')"
                         },
                     },
                     "required": ["table_name"],
@@ -56,15 +57,16 @@ class ToolManager:
             types.Tool(
                 name="query",
                 description=(
-                    "Execute a SQL query on the clinical trials database. "
-                    "Use this to analyze clinical trial data and extract specific information."
+                    "Execute a SQL query using DuckDB syntax."
+                    "Use fully qualified table names (database.schema.table). "
+                    "Example: SELECT * FROM compound_pipeline.clinicaltrials.investigationalagent LIMIT 5"
                 ),
                 inputSchema={
                     "type": "object",
                     "properties": {
                         "sql": {
                             "type": "string",
-                            "description": "SQL query to execute"
+                            "description": "SQL query in DuckDB syntax with fully qualified table names"
                         },
                     },
                     "required": ["sql"],
@@ -73,7 +75,7 @@ class ToolManager:
             types.Tool(
                 name="append-insight",
                 description=(
-                    "Record an insight or observation about the clinical trials data. "
+                    "Record an insight or observation about the data analysis. "
                     "Use this to document important findings during analysis."
                 ),
                 inputSchema={
@@ -81,7 +83,7 @@ class ToolManager:
                     "properties": {
                         "insight": {
                             "type": "string",
-                            "description": "The insight to record"
+                            "description": "The insight to record about the data analysis"
                         },
                     },
                     "required": ["insight"],
