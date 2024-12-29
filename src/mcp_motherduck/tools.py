@@ -58,7 +58,7 @@ class ToolManager:
                 name="query",
                 description=(
                     "Execute a SQL query using DuckDB syntax."
-                    "Use fully qualified table names (database.schema.table). "
+                    "You always need to use the full table name, i.e. database.schema.tablename."
                     "Example: SELECT * FROM compound_pipeline.clinicaltrials.investigationalagent LIMIT 5"
                 ),
                 inputSchema={
