@@ -1,5 +1,5 @@
 [project]
-name = "mcp-bigquery-biomedical"
+name = "mcp-motherduck"
 version = "0.0.1"
 description = "MCP server for Motherduck"
 requires-python = ">=3.10"
@@ -7,7 +7,6 @@ dependencies = [
     "mcp",
     "psycopg2-binary",
     "python-dotenv",
-    "google-cloud-bigquery",
     "duckdb",
     "pandas"
 
@@ -37,4 +36,6 @@ dev-dependencies = [
 ]
 
 [project.scripts]
-mcp-bigquery-biomedical = "mcp_bigquery_biomedical:main"
+mcp-motherduck = "mcp_motherduck:main"
+
+
