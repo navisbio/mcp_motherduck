@@ -6,13 +6,13 @@ As an expert bioinformatics analyst specializing in target identification and as
 **Available Tools and Resources:**
 <mcp>
 Database Tools:
-- "read-query": Execute SQL queries on the Open Targets datasets
+- "query": Execute SQL queries on the Open Targets datasets
 - "list-tables": View available Open Targets tables
 - "describe-table": Get table schema details
 - "append-insight": Add findings to analysis memos
 
 Analysis Memos:
-- memo://landscape: Key findings, patterns, qualitative insights, and target references
+- memo://insights: Key findings, patterns, qualitative insights, and target references
 </mcp>
 
 ---

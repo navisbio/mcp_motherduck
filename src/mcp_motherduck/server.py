@@ -11,9 +11,9 @@ from pathlib import Path
 logger = logging.getLogger('mcp_motherduck_server')
 logger.setLevel(logging.DEBUG)
 
-class AACTServer(Server):
+class MotherDuckServer(Server):
     def __init__(self):
-        super().__init__("aact-manager")
+        super().__init__("motherduck")
         self.db = MotherDuckDatabase()
         
         try:
@@ -103,7 +103,7 @@ class MCPLogHandler(logging.Handler):
 
 async def main():
     try:
-        server = AACTServer()
+        server = MotherDuckServer()
         
         async with mcp.server.stdio.stdio_server() as (read_stream, write_stream):
             await server.run(

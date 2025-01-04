@@ -5,7 +5,7 @@ import argparse
 
 def main():
     """Main entry point for the package."""
-    parser = argparse.ArgumentParser(description='AACT Clinical Trials MCP Server')
+    parser = argparse.ArgumentParser(description='MotherDuck MCP Server')
     args = parser.parse_args()
     asyncio.run(server.main())
 
