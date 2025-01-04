@@ -85,6 +85,19 @@ class MotherDuckServer(Server):
             
             return EmptyResult()
 
+    async def shutdown(self):
+        """Clean up resources when shutting down the server."""
+        logger.info("Shutting down MotherDuck server")
+        try:
+            if hasattr(self, 'db'):
+                self.db.close()
+            if hasattr(self, 'log_handler'):
+                logger.removeHandler(self.log_handler)
+        except Exception as e:
+            logger.error(f"Error during shutdown: {str(e)}")
+        finally:
+            await super().shutdown()
+
 class MCPLogHandler(logging.Handler):
     def __init__(self, server):
         super().__init__()

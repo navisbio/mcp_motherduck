@@ -1,18 +1,14 @@
 import logging
 from typing import Any, Optional
 import mcp.types as types
-from datetime import datetime
 import pandas as pd
-import numpy as np
-from .memo_manager import MemoManager
 from .database import MotherDuckDatabase
 
 logger = logging.getLogger('mcp_motherduck_server.tools')
 
 class ToolManager:
-    def __init__(self, db: MotherDuckDatabase, memo_manager: MemoManager):
+    def __init__(self, db: MotherDuckDatabase):
         self.db = db
-        self.memo_manager = memo_manager
         logger.info("ToolManager initialized")
 
     def get_available_tools(self) -> list[types.Tool]:
@@ -70,23 +66,6 @@ class ToolManager:
                         },
                     },
                     "required": ["sql"],
-                },
-            ),
-            types.Tool(
-                name="append-insight",
-                description=(
-                    "Record an insight or observation about the data analysis. "
-                    "Use this to document important findings during analysis."
-                ),
-                inputSchema={
-                    "type": "object",
-                    "properties": {
-                        "insight": {
-                            "type": "string",
-                            "description": "The insight to record about the data analysis"
-                        },
-                    },
-                    "required": ["insight"],
                 },
             ),
         ]
@@ -199,17 +178,6 @@ class ToolManager:
                 return [types.TextContent(
                     type="text",
                     text=df.to_string()
-                )]
-
-            elif name == "append-insight":
-                if not arguments or "insight" not in arguments:
-                    raise ValueError("Insight text is required")
-                
-                insight = arguments["insight"]
-                self.memo_manager.add_insights(insight)
-                return [types.TextContent(
-                    type="text",
-                    text="Insight recorded successfully"
                 )]
 
             else:

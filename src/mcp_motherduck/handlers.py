@@ -3,7 +3,6 @@ from typing import Any
 import mcp.types as types
 from pydantic import AnyUrl
 from .database import MotherDuckDatabase
-from .memo_manager import MemoManager
 from .tools import ToolManager
 import json
 from .resources import get_resources
@@ -14,8 +13,7 @@ class MCPHandlers:
     def __init__(self, db: MotherDuckDatabase, schema: dict):
         self.db = db
         self.schema = schema
-        self.memo_manager = MemoManager()
-        self.tool_manager = ToolManager(self.db,self.memo_manager)
+        self.tool_manager = ToolManager(self.db)
         logger.info("MCPHandlers initialized")
 
     async def handle_list_resources(self) -> list[types.Resource]:
@@ -29,29 +27,17 @@ class MCPHandlers:
         
         try:
             scheme = uri.scheme
-            if scheme not in ["memo", "schema"]:
+            if scheme != "schema":
                 logger.error(f"Unsupported URI scheme: {scheme}")
                 raise ValueError(f"Unsupported URI scheme: {scheme}")
 
-            if scheme == "schema":
-                path = str(uri).replace("schema://", "")
-                if path == "database":
-                    return json.dumps(self.schema, indent=2)
-                else:
-                    logger.error(f"Unknown schema resource: {path}")
-                    raise ValueError(f"Unknown schema resource: {path}")
-                
-            path = str(uri).replace("memo://", "")
-            if not path:
-                logger.error("Empty resource path")
-                raise ValueError("Empty resource path")
-
-            logger.debug(f"Reading resource for path: {path}")
-            if path == "insights":
-                return self.memo_manager.get_insights_memo()
+            path = str(uri).replace("schema://", "")
+            if path == "database":
+                return json.dumps(self.schema, indent=2)
             else:
-                logger.error(f"Unknown resource path: {path}")
-                raise ValueError(f"Unknown resource path: {path}")
+                logger.error(f"Unknown schema resource: {path}")
+                raise ValueError(f"Unknown schema resource: {path}")
+
         except Exception as e:
             logger.error(f"Error reading resource: {str(e)}", exc_info=True)
             raise
