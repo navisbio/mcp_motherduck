@@ -28,6 +28,23 @@ class MotherDuckDatabase:
         self.retry_delay = retry_delay
         self._conn = None
         self._conn_lock = Lock()
+        
+        # Get allowed datasets from environment
+        allowed_datasets = os.environ.get('ALLOWED_DATASETS', '').strip()
+        # Parse into tuples of (database, schema) where schema is optional
+        self.allowed_datasets = []
+        if allowed_datasets:
+            for dataset in allowed_datasets.split(','):
+                parts = dataset.strip().split('.')
+                if len(parts) == 1:
+                    self.allowed_datasets.append((parts[0], None))
+                    logger.info("Access restricted to database: %s", parts[0])
+                elif len(parts) == 2:
+                    self.allowed_datasets.append((parts[0], parts[1]))
+                    logger.info("Access restricted to database.schema: %s.%s", parts[0], parts[1])
+        else:
+            logger.info("No dataset restrictions applied")
+        
         self._initialize_connection()
         logger.info("MotherDuck database initialization complete")
 
@@ -87,6 +104,53 @@ class MotherDuckDatabase:
                 self._conn = None  # Force reconnection next time
                 raise
 
+    def _validate_query(self, query: str) -> tuple[bool, str]:
+        """Validate if the query only accesses allowed databases and schemas.
+        
+        Args:
+            query: The SQL query to validate
+            
+        Returns:
+            Tuple of (is_valid, error_message)
+        """
+        if not self.allowed_datasets:
+            return True, ""
+
+        # Convert query to lowercase for case-insensitive comparison
+        query_lower = query.lower()
+        
+        # Allow access to system schemas
+        if "information_schema." in query_lower or "pg_catalog." in query_lower:
+            return True, ""
+
+        # Extract all potential database references (assuming format: database.schema.table or database.schema)
+        import re
+        # Match patterns like database.schema.table or database.schema
+        db_refs = re.findall(r'([a-zA-Z0-9_]+)\.([a-zA-Z0-9_]+)(?:\.([a-zA-Z0-9_]+))?', query_lower)
+        
+        if not db_refs:
+            return True, ""  # No database references found
+            
+        # Check each database reference against allowed datasets
+        unauthorized = []
+        for db, schema, _ in db_refs:
+            is_allowed = False
+            for allowed_db, allowed_schema in self.allowed_datasets:
+                if db == allowed_db.lower():
+                    if allowed_schema is None or schema == allowed_schema.lower():
+                        is_allowed = True
+                        break
+            if not is_allowed:
+                if any(allowed_db.lower() == db for allowed_db, _ in self.allowed_datasets):
+                    unauthorized.append(f"{db}.{schema}")
+                else:
+                    unauthorized.append(db)
+
+        if unauthorized:
+            return False, f"Access denied to: {', '.join(set(unauthorized))}"
+            
+        return True, ""
+
     def execute_query(self, query: str, params: Optional[dict[str, Any]] = None) -> list[dict[str, Any]] | dict[str, str]:
         """Execute a SQL query and return results as a list of dictionaries.
         
@@ -99,6 +163,12 @@ class MotherDuckDatabase:
             or a dictionary with an 'error' key containing the error message
         """
         logger.debug("Executing query: %s", query)
+        
+        # Validate query against allowed datasets
+        is_valid, error_msg = self._validate_query(query)
+        if not is_valid:
+            logger.error("Query validation failed: %s", error_msg)
+            return {"error": error_msg}
         
         if params:
             # Use DuckDB's built-in parameter binding

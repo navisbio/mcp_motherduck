@@ -16,53 +16,54 @@ class ToolManager:
         logger.debug("Retrieving available tools")
         tools = [
             types.Tool(
-                name="list-tables",
+                name="motherduck-list-tables",
                 description=(
-                    "Lists all available tables in the MotherDuck database with their full names (database.schema.table). "
-                    "Uses DuckDB syntax. Optionally filter tables by database name."
+                    "Lists available tables in the MotherDuck database using DuckDB syntax. "
+                    "Use this tool first to discover available tables. "
+                    "Optional: Filter by database name using the 'database' parameter."
                 ),
                 inputSchema={
                     "type": "object",
                     "properties": {
                         "database": {
                             "type": "string",
-                            "description": "Optional database name to filter tables (e.g., 'compound_pipeline')"
+                            "description": "Database name to filter tables (e.g., 'compound_pipeline')"
                         }
                     },
                 },
             ),
             types.Tool(
-                name="describe-table",
+                name="motherduck-describe-table",
                 description=(
-                    "Get detailed information about a specific table's structure using DuckDB syntax. "
-                    "Shows column names, types, nullability, and default values. "
-                    "Provide the full table name in format: database.schema.table "
-                    "(e.g., 'compound_pipeline.clinicaltrials.investigationalagent')"
+                    "Shows detailed table structure using DuckDB syntax. "
+                    "Use after exploring available tables with motherduck-list-tables. "
+                    "Requires full table name in format: database.schema.table"
                 ),
                 inputSchema={
                     "type": "object",
                     "properties": {
                         "table_name": {
                             "type": "string",
-                            "description": "Full table name in DuckDB format (e.g., 'compound_pipeline.clinicaltrials.investigationalagent')"
+                            "description": "Full table name (e.g., 'compound_pipeline.oncology_all.genetarget')"
                         },
                     },
                     "required": ["table_name"],
                 },
             ),
             types.Tool(
-                name="query",
+                name="motherduck-query",
                 description=(
-                    "Execute a SQL query using DuckDB syntax."
-                    "You always need to use the full table name, i.e. database.schema.tablename."
-                    "Example: SELECT * FROM compound_pipeline.clinicaltrials.investigationalagent LIMIT 5"
+                    "Executes read-only SQL queries using DuckDB syntax. "
+                    "Use after exploring tables with motherduck-list-tables and motherduck-describe-table. "
+                    "Always use fully qualified table names (database.schema.table). "
+                    "Example: SELECT * FROM compound_pipeline.oncology_all.genetarget LIMIT 5"
                 ),
                 inputSchema={
                     "type": "object",
                     "properties": {
                         "sql": {
                             "type": "string",
-                            "description": "SQL query in DuckDB syntax with fully qualified table names"
+                            "description": "SQL query with fully qualified table names"
                         },
                     },
                     "required": ["sql"],
@@ -77,9 +78,10 @@ class ToolManager:
         logger.info(f"Executing tool: {name} with arguments: {arguments}")
 
         try:
-            if name == "list-tables":
+            if name == "motherduck-list-tables":
                 database_filter = arguments.get('database') if arguments else None
                 
+                # Build the base query
                 query = """
                 SELECT 
                     table_catalog as database_name,
@@ -90,8 +92,18 @@ class ToolManager:
                 WHERE table_type = 'BASE TABLE'
                 """
                 
+                # Add database filter from arguments
                 if database_filter:
                     query += f" AND table_catalog = '{database_filter}'"
+                # Add allowed datasets filter if configured
+                elif self.db.allowed_datasets:
+                    conditions = []
+                    for db, schema in self.db.allowed_datasets:
+                        if schema:
+                            conditions.append(f"(table_catalog = '{db}' AND table_schema = '{schema}')")
+                        else:
+                            conditions.append(f"table_catalog = '{db}'")
+                    query += f" AND ({' OR '.join(conditions)})"
                 
                 query += " ORDER BY table_catalog, table_schema, table_name;"
                 
@@ -119,7 +131,7 @@ class ToolManager:
                     text="\n".join(output_lines)
                 )]
 
-            elif name == "describe-table":
+            elif name == "motherduck-describe-table":
                 if not arguments or "table_name" not in arguments:
                     return [types.TextContent(
                         type="text",
@@ -178,7 +190,7 @@ class ToolManager:
                     text="\n".join(description)
                 )]
 
-            elif name == "query":
+            elif name == "motherduck-query":
                 if not arguments or "sql" not in arguments:
                     return [types.TextContent(
                         type="text",

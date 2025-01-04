@@ -47,7 +47,7 @@ class MCPHandlers:
         prompts = [
             types.Prompt(
                 name="indication-landscape",
-                description="Analyzes clinical trial patterns, development trends, and competitive dynamics within specific therapeutic areas",
+                description="Analyzes clinical trial patterns, development trends, and competitive dynamics within specific therapeutic areas using motherduck-query and other MotherDuck tools",
                 arguments=[
                     types.PromptArgument(
                         name="topic",

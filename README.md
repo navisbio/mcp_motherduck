@@ -1,93 +1,62 @@
 # MotherDuck MCP Server
 
 ## Overview
-A Model Context Protocol (MCP) server implementation that provides access to MotherDuck databases. This server enables data analysis and automatically generates analysis memos that capture insights from your data.
+A Model Context Protocol (MCP) server implementation that provides read-only access to MotherDuck databases. Supports database and schema-level access control.
 
-## Components
+## Tools
 
-### Resources
-The server exposes a dynamic resource to store analysis results:
-- `memo://analysis`: Key findings and insights from data analysis
+- `motherduck-list-tables`
+   - Lists available tables in the database
+   - Optional filter by database name
+   - Example: `{"database": "compound_pipeline"}`
 
-### Tools
-The server offers several core tools:
+- `motherduck-describe-table`
+   - Shows table structure (columns, types, nullability)
+   - Requires full table name: database.schema.table
+   - Example: `{"table_name": "compound_pipeline.oncology_all.genetarget"}`
 
-#### Query Tools
-- `read-query`
-   - Execute SELECT queries on the MotherDuck database
-   - Input: 
-     - `query` (string): The SELECT SQL query to execute
-   - Returns: Query results as JSON array of objects
+- `motherduck-query`
+   - Executes read-only SQL queries
+   - Requires fully qualified table names
+   - Example: `{"sql": "SELECT * FROM compound_pipeline.oncology_all.genetarget LIMIT 5"}`
 
-#### Schema Tools
-- `list-tables`
-   - Get a list of all tables in the MotherDuck database
-   - No input required
-   - Returns: List of table names
+## Configuration
 
-- `describe-table`
-   - View schema information for a specific table
-   - Input:
-     - `table_name` (string): Name of table to describe
-   - Returns: Column definitions with names, types, and nullability
-
-#### Analysis Tools
-- `append-analysis`
-   - Add new findings to the analysis memo
-   - Input:
-     - `finding` (string): Analysis finding about patterns or trends
-   - Returns: Confirmation of finding addition
-
-## Environment Variables
-The server requires the following environment variables:
+### Required Environment Variables
 - `MOTHERDUCK_TOKEN`: Your MotherDuck authentication token
-- `MOTHERDUCK_DATABASE`: Name of the MotherDuck database to connect to
+
+### Optional Environment Variables
+- `ALLOWED_DATASETS`: Restrict access to specific databases/schemas
+  - Format: `database` or `database.schema` (comma-separated)
+  - Examples:
+    ```bash
+    # Full database access
+    ALLOWED_DATASETS=compound_pipeline
+
+    # Single schema access
+    ALLOWED_DATASETS=compound_pipeline.oncology_all
+
+    # Multiple schemas
+    ALLOWED_DATASETS=compound_pipeline.oncology_all,compound_pipeline.clinicaltrials
+    ```
 
 ## Usage with Claude Desktop
 
-Add the following to your claude_desktop_config.json:
-
-
-"mcpServers": {
+Add to your `claude_desktop_config.json`:
+```json
+{
+  "mcpServers": {
     "MOTHERDUCK-MCP": {
       "command": "python",
-      "args": [
-        "-m",
-        "mcp_server_motherduck"
-      ],
+      "args": ["-m", "mcp_server_motherduck"],
       "env": {
         "MOTHERDUCK_TOKEN": "YOUR_TOKEN",
-        "MOTHERDUCK_DATABASE": "YOUR_DATABASE"
+        "ALLOWED_DATASETS": "YOUR_ALLOWED_DATASETS"  // Optional
       }
     }
+  }
 }
-
-
-## Roadmap & Contribution
-
-Over the coming weeks and months, we will build other MCP servers for the following datasets:
-
-- OpenFDA: Access to FDA drug, device, and food data
-- ChEMBL: Bioactive molecules and drug-like compounds
-- Open Targets: Genetic associations and drug target validation
-- And more to come!
-
-We warmly welcome contributions of all kinds! Happy to hear from you if you
-
-- Have specific use cases you'd like to explore
-- Need customizations for your research
-- Want to suggest additional datasets
-- Are interested in contributing code, documentation, or ideas
-- Want to improve existing features
-
-Please reach out by:
-- Opening an issue on GitHub
-- Starting a discussion in our repository
-- Emailing us at jonas.walheim@navis-bio.com
-- Submitting pull requests
-
-Your feedback helps shape our development priorities and align them with the research community's needs.
+```
 
 ## License
-
-This MCP server is licensed under the GNU General Public License v3.0 (GPL-3.0). This means you have the freedom to run, study, share, and modify the software. Any modifications or derivative works must also be distributed under the same GPL-3.0 terms. For more details, please see the LICENSE file in the project repository.
+GNU General Public License v3.0 (GPL-3.0)

@@ -6,10 +6,9 @@ As an expert bioinformatics analyst specializing in target identification and as
 **Available Tools and Resources:**
 <mcp>
 Database Tools:
-- "query": Execute SQL queries on the Open Targets datasets
-- "list-tables": View available Open Targets tables
-- "describe-table": Get table schema details
-- "append-insight": Add findings to analysis memos
+- "motherduck-query": Execute SQL queries on the Open Targets datasets
+- "motherduck-list-tables": View available Open Targets tables
+- "motherduck-describe-table": Get table schema details
 
 Analysis Memos:
 - memo://insights: Key findings, patterns, qualitative insights, and target references
