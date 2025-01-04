@@ -97,6 +97,12 @@ class ToolManager:
                 
                 results = self.db.execute_query(query)
                 
+                if isinstance(results, dict) and 'error' in results:
+                    return [types.TextContent(
+                        type="text",
+                        text=f"Error listing tables: {results['error']}"
+                    )]
+                
                 if not results:
                     return [types.TextContent(
                         type="text",
@@ -115,14 +121,20 @@ class ToolManager:
 
             elif name == "describe-table":
                 if not arguments or "table_name" not in arguments:
-                    raise ValueError("Table name is required")
+                    return [types.TextContent(
+                        type="text",
+                        text="Error: Table name is required"
+                    )]
                 
                 table_name = arguments["table_name"]
                 
                 # Split the full table name into parts
                 parts = table_name.split('.')
                 if len(parts) != 3:
-                    raise ValueError("Table name must be in format: database.schema.table")
+                    return [types.TextContent(
+                        type="text",
+                        text="Error: Table name must be in format: database.schema.table"
+                    )]
                 
                 database, schema, table = parts
                 
@@ -140,6 +152,12 @@ class ToolManager:
                 ORDER BY ordinal_position;
                 """
                 results = self.db.execute_query(query)
+                
+                if isinstance(results, dict) and 'error' in results:
+                    return [types.TextContent(
+                        type="text",
+                        text=f"Error describing table: {results['error']}"
+                    )]
                 
                 if not results:
                     return [types.TextContent(
@@ -162,10 +180,19 @@ class ToolManager:
 
             elif name == "query":
                 if not arguments or "sql" not in arguments:
-                    raise ValueError("SQL query is required")
+                    return [types.TextContent(
+                        type="text",
+                        text="Error: SQL query is required"
+                    )]
                 
                 sql = arguments["sql"]
                 results = self.db.execute_query(sql)
+                
+                if isinstance(results, dict) and 'error' in results:
+                    return [types.TextContent(
+                        type="text",
+                        text=f"Error executing query: {results['error']}"
+                    )]
                 
                 if not results:
                     return [types.TextContent(
@@ -181,9 +208,15 @@ class ToolManager:
                 )]
 
             else:
-                raise ValueError(f"Unknown tool: {name}")
+                return [types.TextContent(
+                    type="text",
+                    text=f"Error: Unknown tool '{name}'"
+                )]
 
         except Exception as e:
             logger.error(f"Error executing tool {name}: {str(e)}", exc_info=True)
-            raise
+            return [types.TextContent(
+                type="text",
+                text=f"Error executing tool: {str(e)}"
+            )]
 

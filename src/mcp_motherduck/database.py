@@ -16,18 +16,16 @@ class DatabaseConnectionError(Exception):
     pass
 
 class MotherDuckDatabase:
-    def __init__(self, max_retries: int = 3, retry_delay: float = 1.0, query_timeout: int = 30):
+    def __init__(self, max_retries: int = 3, retry_delay: float = 1.0):
         """Initialize the MotherDuck database connection manager.
         
         Args:
             max_retries: Maximum number of connection retry attempts
             retry_delay: Delay between retry attempts in seconds
-            query_timeout: Query execution timeout in seconds
         """
         logger.info("Initializing MotherDuck database connection")
         self.max_retries = max_retries
         self.retry_delay = retry_delay
-        self.query_timeout = query_timeout
         self._conn = None
         self._conn_lock = Lock()
         self._initialize_connection()
@@ -89,7 +87,7 @@ class MotherDuckDatabase:
                 self._conn = None  # Force reconnection next time
                 raise
 
-    def execute_query(self, query: str, params: Optional[dict[str, Any]] = None) -> list[dict[str, Any]]:
+    def execute_query(self, query: str, params: Optional[dict[str, Any]] = None) -> list[dict[str, Any]] | dict[str, str]:
         """Execute a SQL query and return results as a list of dictionaries.
         
         Args:
@@ -97,12 +95,8 @@ class MotherDuckDatabase:
             params: Optional parameters for the query
             
         Returns:
-            List of dictionaries containing the query results
-            
-        Raises:
-            DatabaseConnectionError: If connection fails
-            RuntimeError: If query execution fails
-            ValueError: If query timeout occurs
+            Either a list of dictionaries containing the query results,
+            or a dictionary with an 'error' key containing the error message
         """
         logger.debug("Executing query: %s", query)
         
@@ -113,26 +107,35 @@ class MotherDuckDatabase:
         else:
             bound_params = {}
 
-        with self.get_connection() as conn:
-            try:
-                # Set query timeout
-                conn.execute(f"SET timeout_duration='{self.query_timeout}s'")
-                
-                # Execute the query with proper parameter binding
-                result = conn.execute(query, bound_params).fetchdf()
-                
-                # Convert DataFrame to list of dictionaries
-                rows = result.to_dict('records')
-                
-                logger.debug("Query returned %d rows", len(rows))
-                return rows
-                
-            except duckdb.TimeoutException:
-                logger.error("Query timed out after %d seconds", self.query_timeout)
-                raise ValueError(f"Query timed out after {self.query_timeout} seconds")
-            except Exception as e:
-                logger.error("Error executing query: %s", str(e))
-                raise RuntimeError(f"Query execution error: {str(e)}")
+        try:
+            with self._conn_lock:
+                if not self._conn or not self._test_connection():
+                    logger.info("Connection dead or missing, reconnecting...")
+                    try:
+                        self._initialize_connection()
+                    except Exception as e:
+                        logger.error("Failed to initialize connection: %s", str(e))
+                        return {"error": f"Database connection error: {str(e)}"}
+
+                try:
+                    # Execute the query with proper parameter binding
+                    result = self._conn.execute(query, bound_params).fetchdf()
+                    
+                    # Convert DataFrame to list of dictionaries
+                    rows = result.to_dict('records')
+                    
+                    logger.debug("Query returned %d rows", len(rows))
+                    return rows
+                    
+                except Exception as e:
+                    msg = f"Query execution error: {str(e)}"
+                    logger.error(msg)
+                    return {"error": msg}
+                        
+        except Exception as e:
+            msg = f"Unexpected error: {str(e)}"
+            logger.error(msg)
+            return {"error": msg}
 
     def close(self) -> None:
         """Close the database connection."""
