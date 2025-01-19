@@ -47,11 +47,11 @@ Add to your `claude_desktop_config.json`:
 {
   "mcpServers": {
     "MOTHERDUCK-MCP": {
-      "command": "python",
+      "command": "uv",
       "args": ["-m", "mcp_server_motherduck"],
       "env": {
         "MOTHERDUCK_TOKEN": "YOUR_TOKEN",
-        "ALLOWED_DATASETS": "YOUR_ALLOWED_DATASETS"  // Optional
+        "ALLOWED_DATASETS_MOTHERDUCK": "YOUR_ALLOWED_DATASETS"  // Optional
       }
     }
   }

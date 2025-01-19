@@ -30,7 +30,7 @@ class MotherDuckDatabase:
         self._conn_lock = Lock()
         
         # Get allowed datasets from environment
-        allowed_datasets = os.environ.get('ALLOWED_DATASETS', '').strip()
+        allowed_datasets = os.environ.get('ALLOWED_DATASETS_MOTHERDUCK', '').strip()
         # Parse into tuples of (database, schema) where schema is optional
         self.allowed_datasets = []
         if allowed_datasets:
